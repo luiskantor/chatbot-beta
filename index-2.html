@@ -1,0 +1,4613 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kantor Lab Chatbot - Automatisch deployt</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            height: 100%;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: transparent;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* CHAT WIDGET BUTTON */
+        .chat-widget-button {
+            position: fixed !important;
+            bottom: 24px !important;
+            right: 24px !important;
+            top: auto !important;
+            left: auto !important;
+            width: 72px;
+            height: 72px;
+            background: #B7483E;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(183, 72, 62, 0.25);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            padding-top: 2px;
+        }
+
+        .chat-widget-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(183, 72, 62, 0.35);
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 16px;
+            height: 16px;
+            background: #ef4444;
+            border: 3px solid rgba(255, 255, 255, 1);
+            border-radius: 50%;
+            opacity: 0;
+            transform: scale(0);
+            transition: all 0.3s ease;
+        }
+
+        .notification-badge.show {
+            opacity: 1;
+            transform: scale(1);
+            animation: pulseBadge 2s ease-in-out infinite;
+        }
+
+        @keyframes pulseBadge {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .chat-icon {
+            width: 48px;
+            height: 48px;
+            transition: all 0.3s ease;
+            opacity: 1;
+            transform: scale(1) rotate(0deg);
+        }
+
+        .chat-widget-button.open .chat-icon {
+            opacity: 0;
+            transform: scale(0) rotate(90deg);
+        }
+
+        .close-icon {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            opacity: 0;
+            transform: scale(0) rotate(-90deg);
+            transition: all 0.3s ease;
+        }
+
+        .chat-widget-button.open .close-icon {
+            opacity: 1;
+            transform: scale(1) rotate(0deg);
+        }
+
+        .close-icon line {
+            stroke: white;
+            stroke-width: 2.5;
+            stroke-linecap: round;
+        }
+
+        .chat-widget-button.clicked::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px solid #B7483E;
+            animation: pulseRipple 0.6s ease-out;
+        }
+
+        @keyframes pulseRipple {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0.8;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1.5);
+                opacity: 0;
+            }
+        }
+
+        /* POP-UP MESSAGE - KEIN SCHIMMER */
+        .popup-message {
+            position: fixed !important;
+            bottom: 130px !important;
+            right: 24px !important;
+            top: auto !important;
+            left: auto !important;
+            width: 320px;
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            padding: 20px;
+            padding-bottom: 32px;
+            opacity: 0;
+            transform: translateY(10px) scale(0.95);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            pointer-events: none;
+            z-index: 998;
+        }
+
+        .popup-message.show {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: all;
+        }
+
+        .popup-arrow {
+            position: absolute;
+            bottom: -10px;
+            right: 24px;
+            width: 24px;
+            height: 24px;
+        }
+
+        .popup-arrow::before {
+            content: '';
+            position: absolute;
+            bottom: 6px;
+            left: 50%;
+            transform: translateX(-50%) rotate(45deg);
+            width: 22px;
+            height: 22px;
+            background: #ffffff;
+            border-radius: 0 0 4px 0;
+        }
+
+        .popup-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 24px;
+            height: 24px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+            color: #9ca3af;
+        }
+
+        .popup-close:hover {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        .popup-close svg {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+            stroke-width: 2;
+            stroke-linecap: round;
+        }
+
+        .popup-content {
+            padding-right: 24px;
+        }
+
+        .popup-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .popup-badge {
+            font-size: 12px;
+            font-weight: 600;
+            color: #B7483E;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            filter: brightness(1.1) saturate(1.2);
+            text-shadow: 0 0 8px rgba(183, 72, 62, 0.3);
+        }
+
+        .spark-icon {
+            width: 14px;
+            height: 14px;
+            filter: drop-shadow(0 0 4px rgba(183, 72, 62, 0.4));
+        }
+
+        .popup-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 4px;
+            line-height: 1.4;
+            white-space: nowrap;
+        }
+
+        .popup-subtitle {
+            font-size: 12px;
+            color: #6b7280;
+            opacity: 0.7;
+            margin-bottom: 20px;
+            font-weight: 400;
+        }
+
+        .quick-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .quick-action-btn {
+            background: #f9fafb;
+            border: none;
+            border-radius: 10px;
+            padding: 14px 16px;
+            font-size: 13px;
+            color: #374151;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            font-weight: 500;
+            width: fit-content;
+        }
+
+        .quick-action-btn:hover {
+            background: #f3f4f6;
+            color: #B7483E;
+            transform: translateY(-1px);
+        }
+
+        /* CHATBOT CONTAINER */
+        .chatbot-container {
+            position: fixed !important;
+            bottom: 130px !important;
+            right: 24px !important;
+            top: auto !important;
+            left: auto !important;
+            width: 450px;
+            height: 680px;
+            max-width: calc(100vw - 48px);
+            max-height: calc(100vh - 154px);
+            background: #ffffff;
+            border-radius: 28px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 999;
+            transition: height 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            opacity: 0;
+            transform: translateY(30px) scale(0.9);
+            pointer-events: none;
+            visibility: hidden;
+        }
+
+        .chatbot-container.open {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: all;
+            visibility: visible;
+        }
+
+        .chatbot-container.expanded {
+            height: 800px;
+            max-height: calc(100vh - 154px);
+        }
+
+        .chatbot-header {
+            padding: 20px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-container {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: #B7483E;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: visible;
+        }
+
+        .logo-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 50%;
+            overflow: hidden;
+        }
+
+        .logo-container svg {
+            width: 36px;
+            height: 36px;
+        }
+
+        .status-indicator {
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            width: 12px;
+            height: 12px;
+            background: #10b981;
+            border: 2.5px solid #ffffff;
+            border-radius: 50%;
+            z-index: 100;
+        }
+
+        .header-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .company-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: #111827;
+            opacity: 0.7;
+        }
+
+        .chatbot-name {
+            font-size: 16px;
+            color: #1A0B0B;
+            font-weight: 600;
+            position: relative;
+            overflow: hidden;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            opacity: 0.75;
+        }
+
+        .chatbot-name::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                120deg,
+                transparent 0%,
+                rgba(255, 255, 255, 0.5) 50%,
+                transparent 100%
+            );
+            animation: shineSlower 8s infinite;
+            pointer-events: none;
+        }
+
+        .chatbot-name .spark-icon {
+            width: 14px;
+            height: 14px;
+            fill: #1A0B0B;
+            flex-shrink: 0;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-button {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            color: #6b7280;
+        }
+
+        .icon-button:hover {
+            background: #f3f4f6;
+            color: #111827;
+        }
+
+        .icon-button svg {
+            width: 20px;
+            height: 20px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* Nur das Close-Icon (X) soll 24px sein */
+        .icon-button:last-child svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 16px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .message {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+            max-width: 90%;
+            position: relative;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Slide-in Animationen */
+        .message.bot {
+            animation: slideInFromLeft 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .message.user {
+            animation: slideInFromRight 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes slideInFromLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes slideInFromRight {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes slideOutToLeft {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(-30px);
+            }
+        }
+
+        /* Gruppierte Bot-Nachrichten (innerhalb 10 Sek) haben kleineren Abstand */
+        .message.bot.grouped {
+            margin-top: -8px;
+        }
+
+        /* Frühere Nachrichten in einer Gruppe: Avatar verschwindet mit Slide-Out Animation */
+        .message.bot.grouped-previous .message-avatar {
+            animation: slideOutLeft 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        @keyframes slideOutLeft {
+            from {
+                opacity: 1;
+                transform: translateX(0) scale(1);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(-20px) scale(0.8);
+            }
+        }
+
+        .message.bot.grouped-previous .message-timestamp {
+            display: none;
+        }
+
+        .message-timestamp {
+            font-size: 11px;
+            color: #9ca3af;
+            opacity: 0.6;
+            margin-top: 5px;
+            text-align: right;
+            font-weight: 400;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .message.bot .message-timestamp {
+            text-align: left;
+            justify-content: flex-start;
+        }
+
+        .message.user .message-timestamp {
+            justify-content: flex-end;
+        }
+
+        .feedback-buttons {
+            display: flex;
+            align-items: center;
+            gap: -4px;
+        }
+
+        .feedback-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 2px;
+            opacity: 0.5;
+            transition: opacity 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .feedback-btn:hover {
+            opacity: 1;
+        }
+
+        .feedback-btn.active {
+            opacity: 1;
+        }
+
+        .feedback-btn.active svg {
+            fill: #374151;
+        }
+
+        .feedback-btn svg {
+            width: 14px;
+            height: 14px;
+            fill: #9ca3af;
+        }
+
+        .feedback-separator {
+            color: #9ca3af;
+            opacity: 0.6;
+            margin: 0 2px;
+        }
+
+        .message.user {
+            margin-left: auto;
+        }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #B7483E;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-bottom: 26px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .message-avatar svg {
+            width: 18px;
+            height: 18px;
+            transform: scale(1.1);
+        }
+
+        .message.user .message-avatar {
+            display: none;
+        }
+
+        .message-content {
+            background: #f9fafb;
+            padding: 14px 16px;
+            border-radius: 16px;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #374151;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            word-break: break-word;
+        }
+
+        .message.user .message-content {
+            background: rgba(183, 72, 62, 0.12);
+            color: #7C2F28;
+        }
+
+        /* Quick Actions im Chat */
+        .quick-actions-message {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 16px;
+        }
+
+        .quick-action-chat-btn {
+            background: #f3f4f6;
+            border: none;
+            border-radius: 12px;
+            padding: 14px 18px;
+            font-size: 13px;
+            color: #374151;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            font-weight: 500;
+        }
+
+        .quick-action-chat-btn:hover {
+            background: #e5e7eb;
+            color: #B7483E;
+            transform: translateY(-1px);
+        }
+
+        /* Booking Form */
+        .booking-form {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 16px;
+            transition: all 0.3s ease; /* Animation für Höhenänderung */
+        }
+
+        .booking-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: inherit;
+            background: #ffffff;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .booking-input:focus {
+            outline: none;
+            border-color: #B7483E;
+            box-shadow: 0 4px 32px rgba(183, 72, 62, 0.15),
+                        0 0 0 3px rgba(183, 72, 62, 0.1);
+        }
+
+        .booking-input:disabled {
+            background: #f3f4f6;
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .booking-input.error {
+            border-color: #ef4444;
+        }
+
+        .privacy-checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+
+        .privacy-checkbox {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            flex-shrink: 0;
+            accent-color: #B7483E;
+        }
+
+        .privacy-checkbox-label {
+            cursor: pointer;
+            user-select: none;
+            line-height: 1.4;
+        }
+
+        .privacy-checkbox-label a {
+            color: #B7483E;
+            text-decoration: none;
+        }
+
+        .privacy-checkbox-label a:hover {
+            text-decoration: underline;
+        }
+
+        .booking-submit {
+            width: 100%;
+            padding: 12px 16px;
+            background: #B7483E;
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            opacity: 1;
+            max-height: 48px;
+            overflow: hidden;
+        }
+
+        .booking-submit:hover {
+            background: #9d3a32;
+            transform: translateY(-1px);
+        }
+
+        .booking-submit:active {
+            transform: translateY(0);
+        }
+
+        .booking-submit:disabled {
+            background: #d1d5db;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .booking-submit.hide {
+            opacity: 0;
+            max-height: 0;
+            padding: 0;
+            margin: 0;
+        }
+
+        .booking-form.submitted {
+            gap: 4px;
+            transition: all 0.3s ease; /* Animation für gap Änderung */
+        }
+
+        /* Contact Form Container */
+        .contact-form-container {
+            position: fixed !important;
+            bottom: 130px !important;
+            right: 24px !important;
+            top: auto !important;
+            left: auto !important;
+            width: 450px;
+            height: 680px;
+            max-width: calc(100vw - 48px);
+            max-height: calc(100vh - 154px);
+            background: #ffffff;
+            border-radius: 28px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 1000;
+            /* Geschlossener Zustand */
+            opacity: 0;
+            transform: translateY(30px) scale(0.9);
+            pointer-events: none;
+            visibility: hidden;
+            /* visibility mit Delay beim Schließen, sofort beim Öffnen */
+            transition: opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        visibility 0s 0.4s;
+        }
+
+        .contact-form-container.open {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: all;
+            visibility: visible;
+            /* visibility sofort beim Öffnen */
+            transition: opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+                        visibility 0s 0s;
+        }
+
+        .contact-form-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .contact-form-inner {
+            max-width: 100%;
+        }
+
+        .contact-form-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 8px;
+        }
+
+        .contact-form-description {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .contact-form-fields {
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+        }
+
+        .contact-form-fields .booking-submit {
+            margin-bottom: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0px;
+        }
+
+        .form-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .contact-textarea {
+            resize: none;
+            height: 120px;
+            overflow-y: auto;
+            font-family: inherit;
+        }
+
+        .form-group .error-message {
+            margin-top: 8px;
+            margin-bottom: -24px;
+        }
+
+        #contactPrivacyError {
+            margin-top: -20px;
+            margin-bottom: 0;
+        }
+
+        .contact-form-fields .privacy-checkbox-wrapper {
+            margin-top: -8px;
+            margin-bottom: -4px;
+        }
+
+        /* Contact Handover Button */
+        .contact-handover-btn {
+            width: 100%;
+            padding: 12px 16px;
+            background: #B7483E;
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 16px;
+            opacity: 1;
+            max-height: 48px;
+            overflow: hidden;
+        }
+
+        .contact-handover-btn:hover {
+            background: #9d3a32;
+            transform: translateY(-1px);
+        }
+
+        .contact-handover-btn:active {
+            transform: translateY(0);
+        }
+
+        .contact-handover-btn svg {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .contact-handover-btn.hide {
+            opacity: 0;
+            max-height: 0;
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .error-message {
+            font-size: 12px;
+            color: #ef4444;
+            margin-top: -8px;
+        }
+
+        /* Final Feedback Message */
+        .feedback-message {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 16px;
+            margin: 16px 0;
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+
+        .feedback-message.hiding {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+
+        .feedback-message-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 6px;
+        }
+
+        .feedback-message-subtitle {
+            font-size: 12px;
+            color: #9ca3af;
+            margin-bottom: 16px;
+        }
+
+        .feedback-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .feedback-response-btn {
+            padding: 10px 24px;
+            background: #f3f4f6;
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #374151;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .feedback-response-btn:hover {
+            background: #e5e7eb;
+            transform: translateY(-1px);
+        }
+
+        .feedback-response-btn:active {
+            transform: translateY(0);
+        }
+
+        .feedback-response-btn svg {
+            width: 16px;
+            height: 16px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* Feedback Input bei "Nein" */
+        .feedback-input-container {
+            margin-top: 16px;
+            opacity: 0;
+            max-height: 0;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .feedback-input-container.show {
+            opacity: 1;
+            max-height: 300px;
+        }
+
+        .feedback-input-label {
+            font-size: 13px;
+            font-weight: 400;
+            color: #000000;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .feedback-input-wrapper {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .feedback-input {
+            width: 100%;
+            min-height: 100px;
+            padding: 12px 16px;
+            background: #f9fafb;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            color: #374151;
+            font-family: inherit;
+            outline: none;
+            transition: background 0.2s ease;
+            resize: none;
+            overflow-y: auto;
+        }
+
+        .feedback-input::placeholder {
+            color: #9ca3af;
+        }
+
+        .feedback-input:focus {
+            background: #f3f4f6;
+        }
+
+        .feedback-submit-btn {
+            width: 100%;
+            padding: 10px 16px;
+            background: #e5e7eb;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #6b7280;
+            font-family: inherit;
+        }
+
+        .feedback-submit-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .feedback-submit-btn:not(:disabled):hover {
+            background: #d1d5db;
+            transform: translateY(-1px);
+        }
+
+        .feedback-submit-btn:not(:disabled):active {
+            transform: translateY(0);
+        }
+
+        .feedback-submit-btn svg {
+            width: 14px;
+            height: 14px;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .date-divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-align: center;
+            font-size: 11px;
+            color: #9ca3af;
+            opacity: 0.6;
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+
+        .date-divider::before,
+        .date-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(to right, rgba(156, 163, 175, 0) 0%, rgba(156, 163, 175, 0.6) 50%, rgba(156, 163, 175, 0) 100%);
+        }
+
+        .date-divider::before {
+            background: linear-gradient(to left, rgba(156, 163, 175, 0.6) 50%, rgba(156, 163, 175, 0) 100%);
+        }
+
+        .date-divider::after {
+            background: linear-gradient(to right, rgba(156, 163, 175, 0.6) 50%, rgba(156, 163, 175, 0) 100%);
+        }
+
+        .chat-input-area {
+            padding: 16px 20px;
+            background: #ffffff;
+            position: relative;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            background: #f9fafb;
+            border-radius: 24px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: none;
+            min-height: 44px;
+            max-height: 120px;
+            box-shadow: none;
+            transition: box-shadow 0.3s ease;
+        }
+
+        .chat-input:hover {
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+
+        .chat-input:focus {
+            outline: none;
+            box-shadow: 0 4px 20px rgba(183, 72, 62, 0.15),
+                        0 0 0 3px rgba(183, 72, 62, 0.1);
+        }
+
+        .send-button {
+            width: 40px;
+            height: 40px;
+            background: #f9fafb;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .send-button:hover {
+            background: #f3f4f6;
+            transform: scale(1.05);
+        }
+
+        .send-button:disabled,
+        .send-button.disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            background: #f9fafb;
+            transform: none;
+        }
+
+        .send-button:disabled:hover,
+        .send-button.disabled:hover {
+            background: #f9fafb;
+            transform: none;
+        }
+
+        .send-button svg {
+            width: 20px;
+            height: 20px;
+            stroke: #6b7280;
+            fill: none;
+            stroke-width: 2;
+        }
+
+        .privacy-notice {
+            font-size: 11px;
+            color: #9ca3af;
+            text-align: center;
+            margin-top: 12px;
+        }
+
+        .privacy-notice a {
+            color: #B7483E;
+            text-decoration: none;
+        }
+
+        /* Typing Indicator über Input-Feld */
+        .typing-text-indicator {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            right: 0;
+            padding: 8px 20px 4px 20px;
+            font-size: 12px;
+            color: #6b7280;
+            background: #ffffff;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .typing-text-indicator.show {
+            display: block;
+            opacity: 1;
+        }
+
+        .typing-text-indicator.fade-out {
+            opacity: 0;
+        }
+
+        .typing-text-content {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            width: fit-content;
+        }
+
+        /* Animierte Punkte */
+        .typing-dots {
+            display: flex;
+            gap: 3px;
+            align-items: center;
+        }
+
+        .typing-dot {
+            width: 4px;
+            height: 4px;
+            background: #9ca3af;
+            border-radius: 50%;
+            animation: typingDotBounce 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typingDotBounce {
+            0%, 60%, 100% {
+                transform: translateY(0);
+                opacity: 0.7;
+            }
+            30% {
+                transform: translateY(-3px);
+                opacity: 1;
+            }
+        }
+
+        /* Shine Effect nur über Text */
+        .typing-text-content span {
+            position: relative;
+            display: inline-block;
+            overflow: hidden;
+        }
+
+        .typing-text-content span::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent 0%,
+                rgba(255, 255, 255, 0.4) 50%,
+                transparent 100%
+            );
+            animation: shine 2s infinite;
+            pointer-events: none;
+        }
+
+        @keyframes shine {
+            0% {
+                left: -100%;
+            }
+            100% {
+                left: 100%;
+            }
+        }
+
+        @keyframes shineSlower {
+            0% {
+                left: -100%;
+            }
+            25% {
+                left: 100%;
+            }
+            100% {
+                left: 100%;
+            }
+        }
+
+        /* ====================================
+           RESPONSIVE DESIGN - MOBILE OPTIMIERT
+           ==================================== */
+
+        /* Kleine Laptops (1280px - 1440px) */
+        @media screen and (max-width: 1440px) {
+            .chatbot-container {
+                width: 420px;
+                height: 620px;
+                max-width: calc(100vw - 48px);
+                max-height: calc(100vh - 154px);
+                bottom: 110px !important;
+            }
+
+            .chatbot-container.expanded {
+                height: 700px;
+                max-height: calc(100vh - 134px);
+            }
+
+            .chat-widget-button {
+                width: 64px;
+                height: 64px;
+            }
+
+            .chat-icon {
+                width: 42px;
+                height: 42px;
+            }
+
+            .close-icon {
+                width: 28px;
+                height: 28px;
+            }
+        }
+
+        /* Tablet und kleinere Desktops (1024px - 1280px) */
+        @media screen and (max-width: 1280px) {
+            .chatbot-container {
+                width: 400px;
+                height: 600px;
+                max-width: calc(100vw - 48px);
+                max-height: calc(100vh - 154px);
+                bottom: 100px !important;
+            }
+
+            .chatbot-container.expanded {
+                height: 650px;
+                max-height: calc(100vh - 124px);
+            }
+
+            .chat-widget-button {
+                width: 60px;
+                height: 60px;
+            }
+
+            .chat-icon {
+                width: 38px;
+                height: 38px;
+            }
+
+            .close-icon {
+                width: 26px;
+                height: 26px;
+            }
+        }
+
+        /* Kleinere Tablets (768px - 1024px) */
+        @media screen and (max-width: 1024px) {
+            .chatbot-container {
+                width: 380px;
+                height: 580px;
+                max-width: calc(100vw - 48px);
+                max-height: calc(100vh - 154px);
+                bottom: 95px !important;
+            }
+
+            .chatbot-container.expanded {
+                height: 620px;
+                max-height: calc(100vh - 119px);
+            }
+
+            .chat-widget-button {
+                width: 56px;
+                height: 56px;
+            }
+
+            .chat-icon {
+                width: 36px;
+                height: 36px;
+            }
+
+            .close-icon {
+                width: 24px;
+                height: 24px;
+            }
+        }
+
+        /* Sehr kleine Desktop-Fenster (768px - 900px) */
+        @media screen and (max-width: 900px) {
+            .chatbot-container {
+                width: 360px;
+                height: 550px;
+                max-width: calc(100vw - 48px);
+                max-height: calc(100vh - 154px);
+                bottom: 90px !important;
+            }
+
+            .chatbot-container.expanded {
+                height: 600px;
+                max-height: calc(100vh - 114px);
+            }
+
+            .chat-widget-button {
+                width: 52px;
+                height: 52px;
+            }
+
+            .chat-icon {
+                width: 34px;
+                height: 34px;
+            }
+
+            .close-icon {
+                width: 22px;
+                height: 22px;
+            }
+        }
+
+        /* ====================================
+           KONTAKTFORMULAR RESPONSIVE
+           ==================================== */
+
+        /* Kleine Laptops (1280px - 1440px) */
+        @media screen and (max-width: 1440px) {
+            .contact-form-container {
+                width: 420px;
+                height: 620px;
+                max-width: calc(100vw - 48px);
+                max-height: calc(100vh - 154px);
+                bottom: 110px !important;
+            }
+
+            .contact-form-content {
+                padding: 20px;
+            }
+
+            .contact-form-title {
+                font-size: 18px;
+                margin-bottom: 6px;
+            }
+
+            .contact-form-description {
+                font-size: 13px;
+                margin-bottom: 20px;
+            }
+
+            .contact-form-fields {
+                gap: 22px;
+            }
+
+            .contact-textarea {
+                height: 100px;
+            }
+        }
+
+        /* Tablet und kleinere Desktops (1024px - 1280px) */
+        @media screen and (max-width: 1280px) {
+            .contact-form-container {
+                width: 400px;
+                height: 600px;
+                max-width: calc(100vw - 48px);
+                max-height: calc(100vh - 154px);
+                bottom: 100px !important;
+            }
+
+            .contact-form-content {
+                padding: 18px;
+            }
+
+            .contact-form-title {
+                font-size: 17px;
+                margin-bottom: 6px;
+            }
+
+            .contact-form-description {
+                font-size: 12px;
+                margin-bottom: 18px;
+            }
+
+            .contact-form-fields {
+                gap: 20px;
+            }
+
+            .contact-textarea {
+                height: 90px;
+            }
+
+            .booking-input, .contact-textarea {
+                padding: 10px 14px;
+                font-size: 13px;
+            }
+        }
+
+        /* Kleinere Tablets (768px - 1024px) */
+        @media screen and (max-width: 1024px) {
+            .contact-form-container {
+                width: 380px;
+                height: 580px;
+                max-width: calc(100vw - 48px);
+                max-height: calc(100vh - 154px);
+                bottom: 95px !important;
+            }
+
+            .contact-form-content {
+                padding: 16px;
+            }
+
+            .contact-form-title {
+                font-size: 16px;
+                margin-bottom: 5px;
+            }
+
+            .contact-form-description {
+                font-size: 12px;
+                margin-bottom: 16px;
+            }
+
+            .contact-form-fields {
+                gap: 18px;
+            }
+
+            .contact-textarea {
+                height: 80px;
+            }
+
+            .booking-input, .contact-textarea {
+                padding: 9px 12px;
+                font-size: 13px;
+            }
+
+            .booking-submit {
+                padding: 11px 16px;
+                font-size: 13px;
+            }
+        }
+
+        /* Sehr kleine Desktop-Fenster (768px - 900px) */
+        @media screen and (max-width: 900px) {
+            .contact-form-container {
+                width: 360px;
+                height: 550px;
+                max-width: calc(100vw - 48px);
+                max-height: calc(100vh - 154px);
+                bottom: 90px !important;
+            }
+
+            .contact-form-content {
+                padding: 14px;
+            }
+
+            .contact-form-title {
+                font-size: 15px;
+                margin-bottom: 4px;
+            }
+
+            .contact-form-description {
+                font-size: 11px;
+                margin-bottom: 14px;
+            }
+
+            .contact-form-fields {
+                gap: 16px;
+            }
+
+            .contact-textarea {
+                height: 70px;
+            }
+
+            .booking-input, .contact-textarea {
+                padding: 8px 11px;
+                font-size: 12px;
+            }
+
+            .booking-submit {
+                padding: 10px 14px;
+                font-size: 12px;
+            }
+
+            .form-group .error-message {
+                font-size: 11px;
+                margin-bottom: -20px;
+            }
+        }
+
+        /* Mobile Geräte - FULLSCREEN MODUS (unter 768px) */
+        @media screen and (max-width: 768px) {
+            /* Chat Container: Fullscreen auf Mobile */
+            .chatbot-container {
+                width: 100vw !important;
+                height: 100dvh !important; /* dvh statt vh für bessere Mobile-Unterstützung */
+                max-width: 100vw !important;
+                max-height: 100dvh !important;
+                bottom: 0 !important;
+                right: 0 !important;
+                border-radius: 0 !important;
+                box-shadow: none !important;
+            }
+
+            .chatbot-container.open {
+                width: 100vw !important;
+                height: 100dvh !important;
+            }
+
+            /* Chat Header */
+            .chatbot-header {
+                padding: 14px 16px;
+                border-radius: 0;
+            }
+
+            .chatbot-name {
+                font-size: 17px;
+            }
+
+            .logo-container {
+                width: 40px;
+                height: 40px;
+            }
+
+            .logo-container img {
+                width: 100%;
+                height: 100%;
+            }
+
+            .status-indicator {
+                width: 11px;
+                height: 11px;
+                border: 2px solid #ffffff;
+            }
+
+            /* Close Button größer für Touch */
+            .icon-button {
+                width: 38px;
+                height: 38px;
+                padding: 7px;
+            }
+
+            /* Chat Messages Area - Mit mehr Platz nach oben */
+            .chat-messages {
+                padding: 16px;
+                height: calc(100dvh - 200px) !important; /* 200px für Header + Input + extra Platz */
+                overflow-y: auto;
+                overflow-x: hidden;
+                -webkit-overflow-scrolling: touch; /* Smooth Scrolling auf iOS */
+                overscroll-behavior: contain; /* Verhindert Bounce-Effekt */
+                gap: 10px;
+            }
+
+            /* Messages - Spacing angepasst */
+            .message {
+                gap: 10px;
+                max-width: 88% !important; /* Etwas breiter auf Mobile */
+            }
+
+            .message.bot.grouped {
+                margin-top: -6px;
+            }
+
+            /* Message Content - Mobile optimiert */
+            .message-content {
+                font-size: 15px !important;
+                padding: 11px 15px !important;
+                line-height: 1.5 !important;
+            }
+
+            .message-timestamp {
+                font-size: 11px !important;
+                margin-top: 6px !important; /* Positiver Abstand nach Nachricht */
+                gap: 4px !important;
+            }
+
+            .message-timestamp span {
+                font-size: 11px !important;
+            }
+
+            /* Feedback-Icons und Separator komplett auf Mobile ausblenden - NUR in message-timestamp */
+            .feedback-separator {
+                display: none !important;
+            }
+
+            .message-timestamp .feedback-buttons {
+                display: none !important;
+            }
+
+            /* Fix: User Message Timestamp bleibt immer unter der Nachricht */
+            .message.user .message-timestamp {
+                width: 100% !important;
+                display: flex !important;
+                clear: both !important;
+                margin-top: 6px !important;
+            }
+
+            /* Avatars - Genau wie Desktop aber kleiner */
+            .message-avatar {
+                width: 30px !important;
+                height: 30px !important;
+                min-width: 30px !important;
+                margin-bottom: 26px !important;
+                position: relative !important;
+                top: 2px !important; /* 2px niedriger */
+            }
+
+            .message-avatar svg {
+                width: 17px !important;
+                height: 17px !important;
+                transform: scale(1.1) !important;
+            }
+
+            /* Quick Actions */
+            .quick-actions {
+                gap: 8px;
+                padding: 12px 0;
+            }
+
+            .quick-action-btn {
+                padding: 12px 18px;
+                font-size: 14px;
+                min-height: 44px;
+            }
+
+            .quick-action-chat-btn {
+                padding: 10px 14px;
+                font-size: 14px;
+                min-height: 44px;
+            }
+
+            .quick-actions-message {
+                gap: 8px;
+                margin-top: 14px;
+            }
+
+            /* Input Area */
+            .chat-input-area {
+                padding: 12px 16px;
+                border-radius: 0;
+                gap: 10px;
+            }
+
+            .input-wrapper {
+                gap: 10px;
+            }
+
+            #messageInput {
+                font-size: 16px !important; /* 16px verhindert Auto-Zoom auf iOS */
+                padding: 11px 14px;
+                min-height: 44px;
+                max-height: 120px;
+            }
+
+            .send-button {
+                width: 44px;
+                height: 44px;
+                min-width: 44px;
+                flex-shrink: 0;
+            }
+
+            .send-button svg {
+                width: 20px;
+                height: 20px;
+            }
+
+            /* Typing Indicator */
+            .typing-text-indicator {
+                font-size: 13px;
+                padding: 8px 16px;
+            }
+
+            /* Popup Message - Auf Mobile komplett ausgeblendet */
+            .popup-message {
+                display: none !important;
+            }
+
+            .popup-message.show {
+                transform: translateY(0) scale(1) !important;
+            }
+
+            /* Popup Arrow - Proportional skaliert + RECHTS positioniert */
+            .popup-arrow {
+                bottom: -7px !important; /* -10px * 0.7 */
+                right: 16px !important; /* 24px * 0.65 - RECHTS nicht mittig! */
+                left: auto !important;
+                width: 16px !important; /* 24px * 0.65 */
+                height: 16px !important;
+                transform: none !important; /* Kein translateX - bleibt rechts */
+            }
+
+            .popup-arrow::before {
+                width: 14px !important; /* 22px * 0.65 */
+                height: 14px !important;
+                bottom: 4px !important; /* 6px * 0.65 */
+                border-radius: 0 0 3px 0 !important; /* 4px * 0.75 */
+            }
+
+            /* Popup Close Button - Proportional skaliert */
+            .popup-close {
+                top: 10px !important; /* 16px * 0.65 */
+                right: 10px !important;
+                width: 16px !important; /* 24px * 0.65 */
+                height: 16px !important;
+            }
+
+            .popup-close svg {
+                width: 10px !important; /* 16px * 0.65 */
+                height: 10px !important;
+            }
+
+            /* Popup Content - Proportional skaliert */
+            .popup-content {
+                padding-right: 16px !important; /* 24px * 0.65 */
+            }
+
+            .popup-header {
+                gap: 4px !important; /* 6px * 0.65 */
+                margin-bottom: 5px !important; /* 8px * 0.65 */
+            }
+
+            .popup-badge {
+                font-size: 8px !important; /* 12px * 0.65 */
+                gap: 3px !important; /* 4px * 0.75 */
+            }
+
+            .spark-icon {
+                width: 9px !important; /* 14px * 0.65 */
+                height: 9px !important;
+            }
+
+            /* Spark-Icon im Header MUSS nach allgemeiner spark-icon Regel kommen */
+            .chatbot-name .spark-icon {
+                width: 16px !important; /* Noch 2px kleiner */
+                height: 16px !important;
+            }
+
+            .popup-title {
+                font-size: 10px !important; /* 16px * 0.65 */
+                margin-bottom: 3px !important; /* 4px * 0.75 */
+            }
+
+            .popup-subtitle {
+                font-size: 8px !important; /* 12px * 0.65 */
+                margin-bottom: 13px !important; /* 20px * 0.65 */
+            }
+
+            /* Quick Actions in Popup - Proportional skaliert */
+            .popup-message .quick-actions {
+                gap: 5px !important; /* 8px * 0.65 */
+            }
+
+            .popup-message .quick-action-btn {
+                padding: 9px 10px !important; /* 14px/16px * 0.65 */
+                font-size: 8px !important; /* 13px * 0.65 */
+                border-radius: 7px !important; /* 10px * 0.7 */
+                width: 100% !important; /* An popup-message Breite angepasst */
+            }
+
+            /* Chat Button */
+            .chat-widget-button {
+                width: 60px !important;
+                height: 60px !important;
+                bottom: 20px !important;
+                right: 20px !important;
+            }
+
+            /* Widget ausblenden wenn Chat offen ist auf Mobile */
+            .chat-widget-button.open {
+                display: none !important;
+            }
+
+            .chat-icon {
+                width: 36px !important;
+                height: 36px !important;
+            }
+
+            .close-icon {
+                width: 28px !important;
+                height: 28px !important;
+            }
+
+            /* Notification Badge - Proportional skaliert */
+            .notification-badge {
+                width: 13px !important; /* 16px * 0.8125 */
+                height: 13px !important;
+                font-size: 8px !important; /* Kleiner für Mobile */
+                top: 3px !important; /* 4px * 0.75 */
+                right: 3px !important;
+                border: 2px solid rgba(255, 255, 255, 1) !important;
+            }
+
+            /* Booking Form */
+            .booking-form {
+                gap: 12px;
+                transition: all 0.3s ease !important; /* Animation auch auf Mobile */
+            }
+
+            .booking-form.submitted {
+                gap: 4px !important;
+                transition: all 0.3s ease !important;
+            }
+
+            .booking-input {
+                padding: 12px 14px;
+                font-size: 16px; /* Verhindert Auto-Zoom auf iOS */
+                min-height: 44px;
+            }
+
+            .booking-submit {
+                padding: 14px;
+                font-size: 15px;
+                min-height: 48px;
+                max-height: 48px !important; /* Wichtig für Animation */
+                opacity: 1 !important;
+                overflow: hidden !important; /* Wichtig für Animation */
+                transition: all 0.3s ease !important; /* Sicherstellen dass Animation funktioniert */
+            }
+
+            .booking-submit.hide {
+                opacity: 0 !important;
+                max-height: 0 !important;
+                min-height: 0 !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                transition: all 0.3s ease !important;
+            }
+
+            /* Contact Button */
+            .contact-handover-btn {
+                padding: 12px 18px;
+                font-size: 14px;
+                min-height: 44px;
+            }
+
+            /* Feedback Buttons */
+            .feedback-btn {
+                width: 32px;
+                height: 32px;
+            }
+
+            .feedback-btn svg {
+                width: 13px;
+                height: 13px;
+            }
+
+            /* Final Feedback */
+            .final-feedback-overlay {
+                padding: 20px;
+            }
+
+            .final-feedback-content {
+                width: 100%;
+                max-width: 100%;
+                padding: 24px 20px;
+                border-radius: 16px;
+            }
+
+            .final-feedback-content h3 {
+                font-size: 20px;
+            }
+
+            .rating-button {
+                width: 56px;
+                height: 56px;
+            }
+
+            /* Final Feedback Message und Buttons */
+            .feedback-message {
+                padding: 20px 16px !important;
+                margin: 20px 0 !important;
+            }
+
+            .feedback-message-title {
+                font-size: 15px !important;
+            }
+
+            .feedback-message-subtitle {
+                font-size: 12px !important;
+            }
+
+            .feedback-response-btn {
+                padding: 12px 20px !important;
+                font-size: 14px !important;
+                min-height: 44px !important; /* Touch-friendly */
+            }
+
+            .feedback-response-btn svg {
+                width: 18px !important;
+                height: 18px !important;
+            }
+
+            /* Kontaktformular - Fullscreen auf Mobile */
+            .contact-form-container {
+                width: 100vw !important;
+                height: 100dvh !important;
+                max-width: 100vw !important;
+                max-height: 100dvh !important;
+                min-height: 100dvh !important;
+                bottom: 0 !important;
+                right: 0 !important;
+                top: 0 !important;
+                left: 0 !important;
+                border-radius: 0 !important;
+                box-shadow: none !important;
+                z-index: 1000 !important;
+                transform: translateY(30px) scale(0.9) !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+                visibility: hidden !important;
+                transition: opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), visibility 0s 0.4s !important;
+            }
+
+            .contact-form-container.open {
+                width: 100vw !important;
+                height: 100dvh !important;
+                max-height: 100dvh !important;
+                min-height: 100dvh !important;
+                transform: translateY(0) scale(1) !important;
+                opacity: 1 !important;
+                pointer-events: all !important;
+                visibility: visible !important;
+                transition: opacity 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), visibility 0s 0s !important;
+            }
+
+            .contact-form-content {
+                padding: 20px !important;
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+            }
+
+            .contact-form-title {
+                font-size: 22px !important;
+            }
+
+            .contact-form-description {
+                font-size: 14px !important;
+            }
+
+            /* Kontaktformular Textarea - höher auf Mobile */
+            .contact-textarea {
+                height: 168px !important; /* 120px Basis + 48px */
+            }
+
+            /* Gap zwischen Textarea und Datenschutz-Checkbox */
+            .contact-form-fields {
+                gap: 30px !important;
+            }
+
+            /* Expanded Mode nicht auf Mobile */
+            .chatbot-container.expanded {
+                width: 100vw !important;
+                height: 100dvh !important;
+            }
+
+            /* Expand Button verstecken auf Mobile */
+            .icon-button[onclick="toggleExpand()"] {
+                display: none !important;
+            }
+        }
+
+        /* Sehr kleine Mobile Geräte (unter 375px) */
+        @media screen and (max-width: 375px) {
+            .message-content {
+                font-size: 14px !important;
+                padding: 10px 13px !important;
+            }
+
+            .quick-action-btn,
+            .quick-action-chat-btn {
+                font-size: 13px;
+                padding: 10px 14px;
+            }
+
+            .popup-content h3 {
+                font-size: 15px;
+            }
+
+            .chat-widget-button {
+                width: 56px !important;
+                height: 56px !important;
+            }
+
+            .chat-icon {
+                width: 32px !important;
+                height: 32px !important;
+            }
+        }
+
+        /* Landscape Modus auf Mobile */
+        @media screen and (max-width: 768px) and (orientation: landscape) {
+            .chat-messages {
+                height: calc(100dvh - 180px) !important;
+            }
+
+            .popup-message {
+                bottom: 70px;
+            }
+
+            .chatbot-header {
+                padding: 10px 16px;
+            }
+
+            .chat-input-area {
+                padding: 10px 16px;
+            }
+        }
+
+        /* Touch-Optimierungen für alle Geräte */
+        @media (hover: none) and (pointer: coarse) {
+            /* Alle anklickbaren Elemente mindestens 44px für Touch */
+            button,
+            .quick-action-btn,
+            .quick-action-chat-btn,
+            .booking-submit,
+            .contact-handover-btn {
+                min-height: 44px;
+                min-width: 44px;
+            }
+
+            /* Hover-Effekte deaktivieren auf Touch-Geräten */
+            .quick-action-btn:hover,
+            .quick-action-chat-btn:hover,
+            .send-button:hover,
+            .icon-button:hover,
+            .chat-widget-button:hover {
+                transform: none;
+            }
+
+            /* Aktive States für Touch-Feedback */
+            .quick-action-btn:active,
+            .quick-action-chat-btn:active {
+                transform: scale(0.95);
+                opacity: 0.8;
+            }
+        }
+        </style>
+</head>
+<body>
+    <button class="chat-widget-button" id="chatButton" onclick="toggleChat()">
+        <div class="notification-badge" id="notificationBadge"></div>
+        
+        <svg class="chat-icon" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <g transform="translate(25, 25) rotate(2) translate(-25, -25) translate(4, 12)">
+                <rect x="0" y="0" width="42" height="26" rx="2.5" fill="white"/>
+                <path d="M 20 25 Q 20 25, 20.8 25.8 L 26 32 Q 26.5 32.5, 27 32 L 32.2 25.8 Q 33 25, 33 25 Z"
+                      fill="white" stroke="white" stroke-width="0"/>
+                <ellipse cx="13" cy="16" rx="2.8" ry="2.8" fill="#B7483E"/>
+                <ellipse cx="20" cy="17" rx="2.8" ry="2.8" fill="#B7483E"/>
+            </g>
+        </svg>
+        
+        <svg class="close-icon" viewBox="0 0 24 24">
+            <line x1="6" y1="6" x2="18" y2="18"/>
+            <line x1="18" y1="6" x2="6" y2="18"/>
+        </svg>
+    </button>
+
+    <div class="popup-message" id="popupMessage">
+        <div class="popup-arrow"></div>
+        <button class="popup-close" onclick="closePopup()">
+            <svg viewBox="0 0 24 24">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+        </button>
+        <div class="popup-content">
+            <div class="popup-header">
+                <div class="popup-badge">
+                    <svg class="spark-icon" viewBox="0 0 24 24" fill="#B7483E">
+                        <path d="M12 2L9 9L2 12L9 15L12 22L15 15L22 12L15 9L12 2Z"/>
+                    </svg>
+                    Support Assistant
+                </div>
+            </div>
+            <div class="popup-title">Ich helfe Ihnen gerne weiter!</div>
+            <div class="popup-subtitle">Wollen Sie möglicherweise?</div>
+            <div class="quick-actions">
+                <button class="quick-action-btn" onclick="selectQuickAction('termin')">
+                    Termin vereinbaren
+                </button>
+                <button class="quick-action-btn" onclick="selectQuickAction('kontakt')">
+                    Ich will Kontakt aufnehmen.
+                </button>
+                <button class="quick-action-btn" onclick="selectQuickAction('angebot')">
+                    Was bietet Ihr genau an?
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="chatbot-container" id="chatContainer">
+        <div class="chatbot-header">
+            <div class="header-left">
+                <div class="logo-container">
+                    <div class="status-indicator"></div>
+                    <svg viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <g transform="translate(25, 25) rotate(2) translate(-25, -25) translate(4, 12)">
+                            <rect x="0" y="0" width="42" height="26" rx="2.5" fill="white"/>
+                            <path d="M 19 26 Q 19 26, 19.8 26.8 L 24 31 Q 24.5 31.5, 25 31 L 29.2 26.8 Q 30 26, 30 26 Z" 
+                                  fill="white" stroke="white" stroke-width="0"/>
+                            <ellipse cx="13" cy="16" rx="2.8" ry="2.8" fill="#B7483E"/>
+                            <ellipse cx="20" cy="17" rx="2.8" ry="2.8" fill="#B7483E"/>
+                        </g>
+                    </svg>
+                </div>
+                <div class="header-info">
+                    <div class="company-name">kantor lab.</div>
+                    <div class="chatbot-name">
+                        <svg class="spark-icon" viewBox="0 0 24 24">
+                            <path d="M12 2L9 9L2 12L9 15L12 22L15 15L22 12L15 9L12 2Z"/>
+                        </svg>
+                        Support Assistant
+                    </div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="icon-button" onclick="toggleExpand()" title="Erweitern">
+                    <svg viewBox="0 0 24 24">
+                        <polyline points="15 3 21 3 21 9"/>
+                        <polyline points="9 21 3 21 3 15"/>
+                        <line x1="21" y1="3" x2="14" y2="10"/>
+                        <line x1="3" y1="21" x2="10" y2="14"/>
+                    </svg>
+                </button>
+                <button class="icon-button" onclick="toggleChat()" title="Schließen">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="date-divider" id="dateDisplay"></div>
+            
+            <div class="message bot">
+                <div class="message-avatar">
+                    <svg viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <g transform="translate(25, 25) rotate(2) translate(-25, -25) translate(4, 12)">
+                            <rect x="0" y="0" width="42" height="26" rx="2.5" fill="white"/>
+                            <path d="M 20 25 Q 20 25, 20.8 25.8 L 26 32 Q 26.5 32.5, 27 32 L 32.2 25.8 Q 33 25, 33 25 Z"
+                                  fill="white" stroke="white" stroke-width="0"/>
+                            <ellipse cx="13" cy="16" rx="2.8" ry="2.8" fill="#B7483E"/>
+                            <ellipse cx="20" cy="17" rx="2.8" ry="2.8" fill="#B7483E"/>
+                        </g>
+                    </svg>
+                </div>
+                <div>
+                    <div class="message-content">
+                        Hallo! Wie kann ich Ihnen heute helfen?
+                    </div>
+                </div>
+            </div>
+
+            <div class="message user">
+                <div>
+                    <div class="message-content">
+                        Ich möchte einen Termin buchen.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-input-area">
+            <div class="typing-text-indicator" id="typingTextIndicator">
+                <div class="typing-text-content">
+                    <span>Support Assistant schreibt</span>
+                    <div class="typing-dots">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="input-wrapper">
+                <textarea 
+                    id="messageInput" 
+                    class="chat-input" 
+                    placeholder="Schreiben Sie eine Nachricht..."
+                    rows="1"
+                ></textarea>
+                <button class="send-button" onclick="sendMessage()">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 19V5M5 12l7-7 7 7" stroke="#6b7280" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="privacy-notice">
+                Mit dem Senden akzeptieren Sie unsere <a href="#">Datenschutz</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contact Form Container -->
+    <div class="contact-form-container" id="contactFormContainer">
+        <div class="chatbot-header">
+            <div class="header-left">
+                <button class="icon-button" onclick="closeContactForm()" title="Zurück">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                </button>
+                <div class="header-info">
+                    <div class="company-name">kantor lab.</div>
+                    <div class="chatbot-name">Kontaktformular</div>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="icon-button" onclick="closeContactFormCompletely()" title="Schließen">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="contact-form-content">
+            <div class="contact-form-inner">
+                <h2 class="contact-form-title">Kontaktieren Sie uns 👋</h2>
+                <p class="contact-form-description">Füllen Sie das Formular aus und unser Team wird sich schnellstmöglich bei Ihnen melden.</p>
+                <p class="contact-form-description" style="margin-top: 12px;">Oder schreiben Sie eine Mail an <span style="color: #B7483E; font-weight: 600;">info@prime-marketing.com</span></p>
+
+                <form class="contact-form-fields" id="contactFormFields">
+                    <div class="form-group">
+                        <input type="text" class="booking-input" id="contactName" placeholder="Name">
+                        <div class="error-message" id="contactNameError" style="display: none;">Bitte geben Sie einen gültigen Namen ein (mind. 2 Zeichen)</div>
+                    </div>
+
+                    <div class="form-group">
+                        <input type="email" class="booking-input" id="contactEmail" placeholder="ihre@mail.de">
+                        <div class="error-message" id="contactEmailError" style="display: none;">Bitte geben Sie eine gültige E-Mail-Adresse ein</div>
+                    </div>
+
+                    <div class="form-group">
+                        <textarea class="booking-input contact-textarea" id="contactMessage" placeholder="Ihre Nachricht..."></textarea>
+                        <div class="error-message" id="contactMessageError" style="display: none;">Bitte geben Sie eine Nachricht ein (mind. 10 Zeichen)</div>
+                    </div>
+
+                    <div class="privacy-checkbox-wrapper">
+                        <input type="checkbox" class="privacy-checkbox" id="contactPrivacyCheckbox">
+                        <label for="contactPrivacyCheckbox" class="privacy-checkbox-label">
+                            Ich akzeptiere die <a href="#" onclick="event.preventDefault()">Datenschutzerklärung</a>
+                        </label>
+                    </div>
+                    <div class="error-message" id="contactPrivacyError" style="display: none;">Bitte akzeptieren Sie die Datenschutzerklärung</div>
+
+                    <button type="button" class="booking-submit" id="contactSubmitBtn" onclick="submitContactForm()">Nachricht senden</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ====================================
+        // KONFIGURATION: Avatar-Bild
+        // ====================================
+        // Hier das Logo/Avatar-Bild des Kunden eintragen (PNG, JPEG, SVG)
+        // Einfach den Pfad zum Bild eintragen, z.B.:
+        // const AVATAR_IMAGE = 'https://example.com/logo.png';
+        // const AVATAR_IMAGE = './images/customer-logo.png';
+        //
+        // Wenn leer gelassen oder null, wird das Standard-SVG-Logo verwendet
+        // Relativer Pfad zur Logo-Datei
+        const AVATAR_IMAGE = './logo2.jpg'; // <-- Logo-Datei
+
+        // ====================================
+        // API-KONFIGURATION & SESSION MANAGEMENT
+        // ====================================
+
+        const API_CONFIG = {
+            baseUrl: 'https://workflow.kantorlab.de',
+            endpoints: {
+                chat: '/webhook/chat',
+                booking: '/webhook/booking-ops',
+                feedback: '/webhook/feedback',
+                handover: '/webhook/handover'
+            },
+            timeout: 12000, // 12 Sekunden
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        };
+        
+        // Startup Log - Zeigt an, dass die neueste Version geladen ist
+        const CHATBOT_VERSION = '2025-11-03-v3.0-FINAL';
+        const BACKEND_CONNECTED = true;
+        console.clear(); // Lösche alte Logs
+        console.log('%c============================================================', 'color: #00ff00; font-weight: bold');
+        console.log('%c🚀 CHATBOT GELADEN - BACKEND VERBUNDEN', 'color: #00ff00; font-size: 16px; font-weight: bold');
+        console.log('%c============================================================', 'color: #00ff00; font-weight: bold');
+        console.log('📅 Version:', CHATBOT_VERSION);
+        console.log('🔗 Backend URL:', API_CONFIG.baseUrl);
+        console.log('📍 Chat Endpoint:', API_CONFIG.baseUrl + API_CONFIG.endpoints.chat);
+        console.log('✅ Backend Status:', BACKEND_CONNECTED ? 'AKTIV UND VERBUNDEN' : 'NICHT VERBUNDEN');
+        console.log('%c============================================================', 'color: #00ff00; font-weight: bold');
+        
+        // Test Backend-Verbindung beim Laden
+        (async () => {
+            try {
+                const testUrl = `${API_CONFIG.baseUrl}${API_CONFIG.endpoints.chat}`;
+                console.log('🔍 Testing Backend Connection:', testUrl);
+                const response = await fetch(testUrl, {
+                    method: 'POST',
+                    headers: API_CONFIG.headers,
+                    body: JSON.stringify({ test: true })
+                });
+                console.log('✅ Backend Response Status:', response.status);
+                if (response.ok) {
+                    console.log('✅ Backend ist ERREICHBAR!');
+                } else {
+                    console.warn('⚠️ Backend antwortete mit Status:', response.status);
+                }
+            } catch (error) {
+                console.error('❌ Backend NICHT erreichbar:', error.message);
+            }
+        })();
+
+        // Session Management - UUID v4 Generator
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        // Session-ID aus localStorage holen oder neu erstellen
+        function getOrCreateSessionId() {
+            const storageKey = 'chatbot_session_id';
+            let sessionId = localStorage.getItem(storageKey);
+            
+            if (!sessionId) {
+                sessionId = generateUUID();
+                localStorage.setItem(storageKey, sessionId);
+                console.log('Neue Session-ID erstellt:', sessionId);
+            } else {
+                console.log('Bestehende Session-ID geladen:', sessionId);
+            }
+            
+            return sessionId;
+        }
+
+        // Generische API-Call Funktion mit Error-Handling und Timeout
+        async function apiCall(endpoint, data) {
+            const url = `${API_CONFIG.baseUrl}${endpoint}`;
+            
+            console.log('📡 API-Call:', url, data);
+            
+            try {
+                // Timeout-Promise erstellen
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error('Request Timeout')), API_CONFIG.timeout);
+                });
+                
+                // Fetch-Promise erstellen
+                const fetchPromise = fetch(url, {
+                    method: 'POST',
+                    headers: API_CONFIG.headers,
+                    body: JSON.stringify(data)
+                });
+                
+                // Race zwischen Timeout und Fetch
+                const response = await Promise.race([fetchPromise, timeoutPromise]);
+                
+                // Prüfe HTTP-Status
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                // Parse JSON Response
+                const responseData = await response.json();
+                console.log('✅ API-Response:', responseData);
+                
+                return responseData;
+                
+            } catch (error) {
+                console.error('❌ API-Error:', error);
+                
+                // Benutzerfreundliche Fehlermeldungen
+                if (error.message === 'Request Timeout') {
+                    throw new Error('Die Anfrage hat zu lange gedauert. Bitte versuchen Sie es erneut.');
+                } else if (error.message.includes('Failed to fetch')) {
+                    throw new Error('Netzwerkfehler. Bitte prüfen Sie Ihre Internetverbindung.');
+                } else if (error.message.includes('HTTP')) {
+                    throw new Error('Der Server hat einen Fehler zurückgegeben. Bitte versuchen Sie es später erneut.');
+                } else {
+                    throw new Error('Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.');
+                }
+            }
+        }
+
+        // ====================================
+        // DATUMSFORMAT-HELPER (Deutsches Format ↔ ISO)
+        // ====================================
+
+        /**
+         * Konvertiert ISO-Datum zu deutschem Format
+         * @param {string} isoDate - Datum im Format "YYYY-MM-DD"
+         * @returns {string} Datum im Format "DD.MM.YYYY"
+         */
+        function formatDateGerman(isoDate) {
+            if (!isoDate) return '';
+            const [year, month, day] = isoDate.split('-');
+            return `${day}.${month}.${year}`;
+        }
+
+        /**
+         * Konvertiert deutsches Datum zu ISO-Format
+         * @param {string} germanDate - Datum im Format "DD.MM.YYYY"
+         * @returns {string} Datum im Format "YYYY-MM-DD"
+         */
+        function formatDateISO(germanDate) {
+            if (!germanDate) return '';
+            const [day, month, year] = germanDate.split('.');
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        }
+
+        /**
+         * Gibt aktuelles Datum im deutschen Format zurück
+         * @returns {string} Aktuelles Datum im Format "DD.MM.YYYY"
+         */
+        function getCurrentDateGerman() {
+            const now = new Date();
+            const day = String(now.getDate()).padStart(2, '0');
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const year = now.getFullYear();
+            return `${day}.${month}.${year}`;
+        }
+
+        /**
+         * Validiert deutsches Datumsformat
+         * @param {string} germanDate - Datum im Format "DD.MM.YYYY"
+         * @returns {boolean} true wenn gültig, false wenn ungültig
+         */
+        function validateGermanDate(germanDate) {
+            if (!germanDate) return false;
+            
+            const dateRegex = /^(\d{2})\.(\d{2})\.(\d{4})$/;
+            const match = germanDate.match(dateRegex);
+            
+            if (!match) return false;
+            
+            const day = parseInt(match[1], 10);
+            const month = parseInt(match[2], 10);
+            const year = parseInt(match[3], 10);
+            
+            if (month < 1 || month > 12) return false;
+            if (day < 1 || day > 31) return false;
+            
+            const date = new Date(year, month - 1, day);
+            
+            return date.getDate() === day && 
+                   date.getMonth() === month - 1 && 
+                   date.getFullYear() === year;
+        }
+
+        /**
+         * Formatiert deutsches Datum schön lesbar mit ausgeschriebenem Monat
+         * @param {string} germanDate - Datum im Format "DD.MM.YYYY"
+         * @returns {string} Datum im Format "15. Februar 2025"
+         */
+        function formatDateGermanReadable(germanDate) {
+            const months = [
+                'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+                'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'
+            ];
+            
+            const [day, month, year] = germanDate.split('.').map(Number);
+            return `${day}. ${months[month - 1]} ${year}`;
+        }
+
+        // ====================================
+        // FUNKTIONEN
+        // ====================================
+
+        // Gibt das Avatar-HTML zurück (entweder Custom-Bild oder Standard-SVG) - NUR FÜR HEADER
+        function getAvatarHTML() {
+            if (AVATAR_IMAGE) {
+                return `<img src="${AVATAR_IMAGE}" alt="Logo" />`;
+            } else {
+                // Standard SVG Logo
+                return `
+                    <svg viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <g transform="translate(25, 25) rotate(2) translate(-25, -25) translate(4, 12)">
+                            <rect x="0" y="0" width="42" height="26" rx="2.5" fill="white"/>
+                            <path d="M 19 26 Q 19 26, 19.8 26.8 L 24 31 Q 24.5 31.5, 25 31 L 29.2 26.8 Q 30 26, 30 26 Z"
+                                  fill="white" stroke="white" stroke-width="0"/>
+                            <ellipse cx="13" cy="16" rx="2.8" ry="2.8" fill="#B7483E"/>
+                            <ellipse cx="20" cy="17" rx="2.8" ry="2.8" fill="#B7483E"/>
+                        </g>
+                    </svg>
+                `;
+            }
+        }
+
+        // Gibt den Bot-Avatar zurück (für Chat-Nachrichten)
+        function getBotAvatarHTML() {
+            return `
+                <svg viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <g transform="translate(25, 25) rotate(2) translate(-25, -25) translate(4, 12)">
+                        <rect x="0" y="0" width="42" height="26" rx="2.5" fill="white"/>
+                        <path d="M 20 25 Q 20 25, 20.8 25.8 L 26 32 Q 26.5 32.5, 27 32 L 32.2 25.8 Q 33 25, 33 25 Z"
+                              fill="white" stroke="white" stroke-width="0"/>
+                        <ellipse cx="13" cy="16" rx="2.8" ry="2.8" fill="#B7483E"/>
+                        <ellipse cx="20" cy="17" rx="2.8" ry="2.8" fill="#B7483E"/>
+                    </g>
+                </svg>
+            `;
+        }
+
+        // Aktuelles Datum anzeigen (ohne Jahr)
+        function displayCurrentDate() {
+            const dateDiv = document.getElementById('dateDisplay');
+            const today = new Date();
+            const options = { weekday: 'long', month: 'long', day: 'numeric' };
+            const dateString = today.toLocaleDateString('de-DE', options);
+            dateDiv.textContent = dateString;
+        }
+
+        // Uhrzeit formatieren (HH:MM)
+        function getCurrentTime() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            return `${hours}:${minutes}`;
+        }
+
+        // Tracking für letzte Bot-Nachricht Zeit
+        let lastBotMessageTime = null;
+        let lastBotMessageElement = null;
+
+        // Hilfsfunktion: Markiert vorherige Bot-Nachricht als Teil einer Gruppe
+        function markPreviousBotAsGrouped() {
+            if (lastBotMessageElement) {
+                lastBotMessageElement.classList.add('grouped-previous');
+            }
+        }
+
+        // Bei jedem Laden der Seite neuen Chat starten
+        window.addEventListener('load', function() {
+            console.log('Seite geladen, initialisiere Chat...');
+
+            // Avatar in Header-Logo aktualisieren
+            const logoContainers = document.querySelectorAll('.logo-container');
+            logoContainers.forEach(container => {
+                // Status-Indicator behalten, nur SVG/IMG austauschen
+                const statusIndicator = container.querySelector('.status-indicator');
+                const avatarHTML = getAvatarHTML();
+
+                // Neuen Inhalt setzen
+                container.innerHTML = avatarHTML;
+
+                // Status-Indicator wieder hinzufügen (falls vorhanden)
+                if (statusIndicator) {
+                    container.appendChild(statusIndicator);
+                }
+            });
+
+            displayCurrentDate();
+            
+            // Chat-Inhalt zurücksetzen - Datum + erste Bot-Nachricht
+            const chatMessages = document.getElementById('chatMessages');
+            lastBotMessageTime = Date.now();
+            chatMessages.innerHTML = `
+                <div class="date-divider" id="dateDisplay"></div>
+
+                <div class="message bot">
+                    <div class="message-avatar">
+                        ${getBotAvatarHTML()}
+                    </div>
+                    <div>
+                        <div class="message-content">
+                            Hallo! Wie kann ich Ihnen heute helfen?
+                        </div>
+                        <div class="message-timestamp">
+                            <span>${getCurrentTime()}</span>
+                            <span class="feedback-separator">·</span>
+                            <div class="feedback-buttons">
+                                <button class="feedback-btn" onclick="handleFeedback('up', this)" title="Hilfreich">
+                                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M7 22V11M2 13V20C2 21.1046 2.89543 22 4 22H16.4262C17.907 22 19.1662 20.9197 19.3914 19.4562L20.4683 12.4562C20.7479 10.6389 19.3418 9 17.5032 9H14V4C14 2.89543 13.1046 2 12 2C11.4477 2 11 2.44772 11 3V3.56597C11 3.99187 10.8935 4.40959 10.6912 4.77974L7.34164 10.1478C7.12324 10.5412 6.67028 10.7649 6.19298 10.7138L4.27279 10.5028C3.02479 10.3796 2 11.3667 2 12.6197V13Z"/>
+                                    </svg>
+                                </button>
+                                <button class="feedback-btn" onclick="handleFeedback('down', this)" title="Nicht hilfreich">
+                                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M17 2V13M22 11V4C22 2.89543 21.1046 2 20 2H7.57377C6.09299 2 4.83375 3.08027 4.6086 4.54383L3.53165 11.5438C3.25211 13.3611 4.65821 15 6.49678 15H10V20C10 21.1046 10.8954 22 12 22C12.5523 22 13 21.5523 13 21V20.434C13 20.0081 13.1065 19.5904 13.3088 19.2203L16.6584 13.8522C16.8768 13.4588 17.3297 13.2351 17.807 13.2862L19.7272 13.4972C20.9752 13.6204 22 12.6333 22 11.3803V11Z"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Datum setzen
+            displayCurrentDate();
+
+            // Speichere Referenz zur ersten Bot-Nachricht
+            lastBotMessageElement = chatMessages.querySelector('.message.bot');
+
+            // Typing Text für zweite Nachricht
+            setTimeout(() => {
+                showTypingText();
+
+                // Nach 2 Sekunden die zweite Nachricht zeigen
+                setTimeout(() => {
+                    hideTypingText();
+
+                    const now = Date.now();
+                    const isGrouped = lastBotMessageTime && (now - lastBotMessageTime) < 10000;
+
+                    // Wenn gruppiert, markiere vorherige Bot-Nachricht
+                    if (isGrouped) {
+                        markPreviousBotAsGrouped();
+                    }
+
+                    lastBotMessageTime = now;
+
+                    const quickActionsMsg = document.createElement('div');
+                    quickActionsMsg.className = isGrouped ? 'message bot grouped' : 'message bot';
+                    quickActionsMsg.innerHTML = `
+                        <div class="message-avatar">
+                            ${getBotAvatarHTML()}
+                        </div>
+                        <div>
+                            <div class="message-content">
+                                Falls Sie eine der folgenden Aktionen durchführen möchten, können Sie diese einfach anklicken:
+                                <div class="quick-actions-message">
+                                    <button class="quick-action-chat-btn" onclick="handleQuickActionClick('termin')">
+                                        Termin vereinbaren
+                                    </button>
+                                    <button class="quick-action-chat-btn" onclick="handleQuickActionClick('produkte')">
+                                        Übersicht zu Produkten
+                                    </button>
+                                    <button class="quick-action-chat-btn" onclick="handleQuickActionClick('kontakt')">
+                                        Kontakt aufnehmen
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="message-timestamp">
+                                <span>${getCurrentTime()}</span>
+                                <span class="feedback-separator">·</span>
+                                <div class="feedback-buttons">
+                                    <button class="feedback-btn" onclick="handleFeedback('up', this)" title="Hilfreich">
+                                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M7 22V11M2 13V20C2 21.1046 2.89543 22 4 22H16.4262C17.907 22 19.1662 20.9197 19.3914 19.4562L20.4683 12.4562C20.7479 10.6389 19.3418 9 17.5032 9H14V4C14 2.89543 13.1046 2 12 2C11.4477 2 11 2.44772 11 3V3.56597C11 3.99187 10.8935 4.40959 10.6912 4.77974L7.34164 10.1478C7.12324 10.5412 6.67028 10.7649 6.19298 10.7138L4.27279 10.5028C3.02479 10.3796 2 11.3667 2 12.6197V13Z"/>
+                                        </svg>
+                                    </button>
+                                    <button class="feedback-btn" onclick="handleFeedback('down', this)" title="Nicht hilfreich">
+                                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M17 2V13M22 11V4C22 2.89543 21.1046 2 20 2H7.57377C6.09299 2 4.83375 3.08027 4.6086 4.54383L3.53165 11.5438C3.25211 13.3611 4.65821 15 6.49678 15H10V20C10 21.1046 10.8954 22 12 22C12.5523 22 13 21.5523 13 21V20.434C13 20.0081 13.1065 19.5904 13.3088 19.2203L16.6584 13.8522C16.8768 13.4588 17.3297 13.2351 17.807 13.2862L19.7272 13.4972C20.9752 13.6204 22 12.6333 22 11.3803V11Z"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    chatMessages.appendChild(quickActionsMsg);
+                    lastBotMessageElement = quickActionsMsg;
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }, 2000);
+            }, 800);
+            
+            // Textarea Event Listener
+            const textarea = document.getElementById('messageInput');
+            if (textarea) {
+                console.log('Textarea gefunden, füge EventListener hinzu...');
+                
+                textarea.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        // Nur senden wenn Bot nicht tippt (Cooldown)
+                        if (!isBotTyping) {
+                            console.log('Enter gedrückt!');
+                            sendMessage();
+                        } else {
+                            console.log('Enter blockiert: Bot schreibt noch...');
+                        }
+                    }
+                });
+                
+                textarea.addEventListener('input', function() {
+                    this.style.height = 'auto';
+                    const newHeight = Math.min(this.scrollHeight, 120);
+                    this.style.height = newHeight + 'px';
+                });
+            } else {
+                console.error('Textarea nicht gefunden!');
+            }
+        });
+
+        // ====================================
+        // HELPER-FUNKTIONEN FÜR BOT-NACHRICHTEN
+        // ====================================
+
+        /**
+         * Fügt eine Bot-Nachricht zum Chat hinzu
+         * @param {string} text - Der Nachrichtentext
+         * @param {object} options - Optionale Parameter (hasTimestamp, hasFeedback, etc.)
+         */
+        function addBotMessage(text, options = {}) {
+            const {
+                hasTimestamp = true,
+                hasFeedback = true,
+                isGrouped = false
+            } = options;
+
+            const chatMessages = document.getElementById('chatMessages');
+            const now = Date.now();
+            
+            // Prüfe ob Nachricht gruppiert werden soll (innerhalb 10 Sekunden)
+            const shouldGroup = lastBotMessageTime && (now - lastBotMessageTime) < 10000;
+            
+            if (shouldGroup && !isGrouped) {
+                markPreviousBotAsGrouped();
+            }
+            
+            lastBotMessageTime = now;
+
+            const botMessage = document.createElement('div');
+            botMessage.className = shouldGroup ? 'message bot grouped' : 'message bot';
+            
+            let timestampHTML = '';
+            if (hasTimestamp) {
+                let feedbackHTML = '';
+                if (hasFeedback) {
+                    feedbackHTML = `
+                        <span class="feedback-separator">·</span>
+                        <div class="feedback-buttons">
+                            <button class="feedback-btn" onclick="handleFeedback('up', this)" title="Hilfreich">
+                                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M7 22V11M2 13V20C2 21.1046 2.89543 22 4 22H16.4262C17.907 22 19.1662 20.9197 19.3914 19.4562L20.4683 12.4562C20.7479 10.6389 19.3418 9 17.5032 9H14V4C14 2.89543 13.1046 2 12 2C11.4477 2 11 2.44772 11 3V3.56597C11 3.99187 10.8935 4.40959 10.6912 4.77974L7.34164 10.1478C7.12324 10.5412 6.67028 10.7649 6.19298 10.7138L4.27279 10.5028C3.02479 10.3796 2 11.3667 2 12.6197V13Z"/>
+                                </svg>
+                            </button>
+                            <button class="feedback-btn" onclick="handleFeedback('down', this)" title="Nicht hilfreich">
+                                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M17 2V13M22 11V4C22 2.89543 21.1046 2 20 2H7.57377C6.09299 2 4.83375 3.08027 4.6086 4.54383L3.53165 11.5438C3.25211 13.3611 4.65821 15 6.49678 15H10V20C10 21.1046 10.8954 22 12 22C12.5523 22 13 21.5523 13 21V20.434C13 20.0081 13.1065 19.5904 13.3088 19.2203L16.6584 13.8522C16.8768 13.4588 17.3297 13.2351 17.807 13.2862L19.7272 13.4972C20.9752 13.6204 22 12.6333 22 11.3803V11Z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    `;
+                }
+                
+                timestampHTML = `
+                    <div class="message-timestamp">
+                        <span>${getCurrentTime()}</span>
+                        ${feedbackHTML}
+                    </div>
+                `;
+            }
+
+            botMessage.innerHTML = `
+                <div class="message-avatar">
+                    ${getBotAvatarHTML()}
+                </div>
+                <div>
+                    <div class="message-content">
+                        ${text}
+                    </div>
+                    ${timestampHTML}
+                </div>
+            `;
+
+            chatMessages.appendChild(botMessage);
+            lastBotMessageElement = botMessage;
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        /**
+         * Fügt Quick Reply Buttons zum letzten Bot-Message hinzu
+         * @param {Array} replies - Array von {text, payload} Objekten
+         */
+        function addQuickReplies(replies) {
+            if (!replies || replies.length === 0) return;
+
+            const lastMessage = document.querySelector('.message.bot:last-of-type .message-content');
+            if (!lastMessage) return;
+
+            const quickRepliesContainer = document.createElement('div');
+            quickRepliesContainer.className = 'quick-actions-message';
+
+            replies.forEach(reply => {
+                const button = document.createElement('button');
+                button.className = 'quick-action-chat-btn';
+                button.textContent = reply.text;
+                button.onclick = () => {
+                    const input = document.getElementById('messageInput');
+                    input.value = reply.payload;
+                    sendMessage();
+                };
+                quickRepliesContainer.appendChild(button);
+            });
+
+            lastMessage.appendChild(quickRepliesContainer);
+        }
+
+        /**
+         * Zeigt eine Fehlermeldung als Bot-Nachricht an
+         * @param {string} errorText - Die Fehlermeldung
+         */
+        function showErrorMessage(errorText) {
+            const chatMessages = document.getElementById('chatMessages');
+            const now = Date.now();
+            
+            const shouldGroup = lastBotMessageTime && (now - lastBotMessageTime) < 10000;
+            if (shouldGroup) {
+                markPreviousBotAsGrouped();
+            }
+            lastBotMessageTime = now;
+
+            const errorMessage = document.createElement('div');
+            errorMessage.className = shouldGroup ? 'message bot grouped' : 'message bot';
+            errorMessage.innerHTML = `
+                <div class="message-avatar">
+                    ${getBotAvatarHTML()}
+                </div>
+                <div>
+                    <div class="message-content" style="background: #fee2e2; color: #991b1b;">
+                        ⚠️ ${errorText}
+                    </div>
+                    <div class="message-timestamp">
+                        <span>${getCurrentTime()}</span>
+                    </div>
+                </div>
+            `;
+
+            chatMessages.appendChild(errorMessage);
+            lastBotMessageElement = errorMessage;
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        /**
+         * Fügt eine User-Nachricht zum Chat hinzu
+         * @param {string} text - Der Nachrichtentext
+         */
+        function addUserMessage(text) {
+            const chatMessages = document.getElementById('chatMessages');
+            
+            // User-Nachricht unterbricht Bot-Gruppierung
+            lastBotMessageTime = null;
+            lastBotMessageElement = null;
+
+            const userMessage = document.createElement('div');
+            userMessage.className = 'message user';
+            userMessage.innerHTML = `
+                <div>
+                    <div class="message-content">
+                        ${text}
+                    </div>
+                    <div class="message-timestamp">
+                        <span>${getCurrentTime()}</span>
+                    </div>
+                </div>
+            `;
+
+            chatMessages.appendChild(userMessage);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // ====================================
+        // SLOT-SELECTION FUNKTIONEN
+        // ====================================
+
+        /**
+         * Zeigt Slot-Buttons für Terminauswahl an
+         * @param {Array} slots - Array von {label, value} Objekten
+         */
+        function displaySlotButtons(slots) {
+            const chatMessages = document.getElementById('chatMessages');
+            
+            // Container für Slot-Buttons (wie Quick-Reply Buttons)
+            const slotContainer = document.createElement('div');
+            slotContainer.className = 'quick-actions-message';
+            slotContainer.style.cssText = 'display: flex; flex-direction: column; gap: 8px; margin-top: 16px;';
+            
+            // Erstelle Button für jeden Slot
+            slots.forEach(slot => {
+                const button = document.createElement('button');
+                button.className = 'quick-action-chat-btn';
+                button.textContent = slot.label;
+                
+                button.onclick = () => {
+                    selectSlot(slot);
+                };
+                
+                slotContainer.appendChild(button);
+            });
+            
+            // Füge Container zur letzten Bot-Nachricht hinzu
+            const lastBotMessage = chatMessages.querySelector('.message.bot:last-of-type .message-content');
+            if (lastBotMessage) {
+                lastBotMessage.appendChild(slotContainer);
+            } else {
+                chatMessages.appendChild(slotContainer);
+            }
+            
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        /**
+         * Verarbeitet Slot-Auswahl
+         * @param {Object} slot - Slot-Objekt mit label und value
+         */
+        function selectSlot(slot) {
+            // Zeige User-Auswahl im Chat
+            addUserMessage(slot.label);
+            
+            // Sende Slot-Auswahl an Backend
+            sendSlotSelection(slot.value);
+        }
+
+        /**
+         * Sendet ausgewählten Slot an Backend
+         * @param {Object} slotData - Slot-Daten mit datetime und slot_id
+         */
+        async function sendSlotSelection(slotData) {
+            const sessionId = getOrCreateSessionId();
+            
+            // Typing-Indikator anzeigen
+            showTypingText();
+            
+            try {
+                const response = await apiCall(API_CONFIG.endpoints.chat, {
+                    content: '__SLOT_SELECTED__',
+                    session_id: sessionId,
+                    booking_data: {
+                        datetime: slotData.datetime,
+                        slot_id: slotData.slot_id
+                    }
+                });
+                
+                // Typing-Indikator ausblenden
+                hideTypingText();
+                
+                // Verarbeite Response (z.B. Name/Email Form)
+                if (response.action === 'show_booking_form') {
+                    addBotMessage(response.message);
+                    // Hier könnte displayBookingForm() aufgerufen werden
+                } else if (response.message) {
+                    addBotMessage(response.message);
+                }
+                
+            } catch (error) {
+                // Typing-Indikator ausblenden
+                hideTypingText();
+                
+                console.error('Error selecting slot:', error);
+                showErrorMessage('Ein Fehler ist aufgetreten. Bitte versuche es erneut.');
+            }
+        }
+
+        // Funktionen für Typing Text Indicator über Input-Feld
+        function showTypingText() {
+            const indicator = document.getElementById('typingTextIndicator');
+            if (indicator) {
+                indicator.classList.add('show');
+                indicator.classList.remove('fade-out');
+            }
+
+            // Cooldown aktivieren: Send-Button deaktivieren
+            isBotTyping = true;
+            const sendButton = document.querySelector('.send-button');
+            if (sendButton) {
+                sendButton.disabled = true;
+                sendButton.classList.add('disabled');
+            }
+        }
+
+        function hideTypingText() {
+            const indicator = document.getElementById('typingTextIndicator');
+            if (indicator) {
+                indicator.classList.add('fade-out');
+                setTimeout(() => {
+                    indicator.classList.remove('show', 'fade-out');
+                }, 300);
+            }
+
+            // Cooldown deaktivieren: Send-Button aktivieren
+            isBotTyping = false;
+            const sendButton = document.querySelector('.send-button');
+            if (sendButton) {
+                sendButton.disabled = false;
+                sendButton.classList.remove('disabled');
+            }
+        }
+
+        // Variable um zu tracken ob Chat schon geöffnet wurde
+        let chatWasOpened = false;
+        let userHasWritten = false;
+        let isBotTyping = false; // Cooldown-Flag um Spam zu verhindern
+        let terminPickerShown = false; // Flag um zu tracken ob Termin-Picker bereits gezeigt wurde
+
+        // Pop-up nach 5 Sekunden anzeigen (nur wenn Chat noch nie geöffnet wurde)
+        setTimeout(() => {
+            const container = document.getElementById('chatContainer');
+            const popup = document.getElementById('popupMessage');
+            const badge = document.getElementById('notificationBadge');
+            
+            // Nur anzeigen wenn Chat NICHT geöffnet ist UND noch nie geöffnet wurde
+            if (!container.classList.contains('open') && !chatWasOpened) {
+                popup.classList.add('show');
+                badge.classList.add('show');
+            }
+        }, 5000);
+
+        function closePopup() {
+            const popup = document.getElementById('popupMessage');
+            popup.classList.remove('show');
+        }
+        
+        function toggleChat() {
+            const container = document.getElementById('chatContainer');
+            const button = document.getElementById('chatButton');
+            const popup = document.getElementById('popupMessage');
+            const badge = document.getElementById('notificationBadge');
+            const contactFormContainer = document.getElementById('contactFormContainer');
+
+            container.classList.toggle('open');
+            button.classList.toggle('open');
+
+            if (container.classList.contains('open')) {
+                popup.classList.remove('show');
+                badge.classList.remove('show');
+
+                // Chat wurde geöffnet - Flag setzen damit Popup nie wieder erscheint
+                chatWasOpened = true;
+
+                // Chat geöffnet
+                // Chat-Schließen-Timer stoppen
+                if (chatClosedTimer) {
+                    clearTimeout(chatClosedTimer);
+                    chatClosedTimer = null;
+                }
+
+                // Wenn Badge wegen Chat-Schließen gesetzt war, Final Feedback zeigen
+                if (showFeedbackOnOpen) {
+                    showFeedbackOnOpen = false;
+                    showFinalFeedback();
+                }
+                // Inaktivitäts-Timer wurde entfernt - nur beim Chat-Schließen relevant
+            } else {
+                // Chat geschlossen - WICHTIG: Auch Kontaktformular schließen
+                contactFormContainer.classList.remove('open');
+
+                // Inaktivitäts-Timer stoppen
+                if (inactivityTimer) {
+                    clearTimeout(inactivityTimer);
+                    inactivityTimer = null;
+                }
+
+                // Chat-Schließen-Timer starten
+                startChatClosedTimer();
+            }
+
+            // Puls-Effekt
+            button.classList.add('clicked');
+            setTimeout(() => {
+                button.classList.remove('clicked');
+            }, 600);
+        }
+
+        function toggleExpand() {
+            const container = document.getElementById('chatContainer');
+            container.classList.toggle('expanded');
+        }
+
+        function selectQuickAction(action) {
+            const container = document.getElementById('chatContainer');
+
+            // Chat öffnen falls geschlossen
+            if (!container.classList.contains('open')) {
+                toggleChat();
+            }
+
+            // Mapping der Quick Actions zu vordefinierten Nachrichten
+            const messages = {
+                'termin': 'Ich würde gerne einen Termin vereinbaren.',
+                'kontakt': 'Ich würde gerne Kontakt aufnehmen.',
+                'angebot': 'Was bietet Ihr genau an?'
+            };
+
+            const message = messages[action];
+
+            if (message) {
+                // Kurze Verzögerung damit der Chat Zeit hat sich zu öffnen
+                setTimeout(() => {
+                    const input = document.getElementById('messageInput');
+                    input.value = message;
+                    sendMessage();
+                }, 300);
+            }
+        }
+
+        async function handleFeedback(type, button) {
+            console.log('Feedback:', type);
+
+            // Finde alle Feedback-Buttons in der gleichen Message
+            const messageTimestamp = button.closest('.message-timestamp');
+            if (messageTimestamp) {
+                const allFeedbackButtons = messageTimestamp.querySelectorAll('.feedback-btn');
+
+                // Prüfe ob bereits ein Button aktiv ist
+                const hasActiveButton = Array.from(allFeedbackButtons).some(btn => btn.classList.contains('active'));
+
+                // Wenn bereits ein Button aktiv ist, nichts tun
+                if (hasActiveButton) {
+                    return;
+                }
+            }
+
+            // Setze den geklickten Button auf aktiv
+            button.classList.add('active');
+
+            // API-Call für Feedback
+            try {
+                await apiCall(API_CONFIG.endpoints.feedback, {
+                    session_id: getOrCreateSessionId(),
+                    rating: type === 'up' ? 5 : 1,
+                    type: 'message',
+                    comment: '' // Optional: Kann später erweitert werden
+                });
+
+                console.log('Feedback erfolgreich gesendet');
+            } catch (error) {
+                console.error('Feedback konnte nicht gesendet werden:', error);
+                // Feedback-Fehler sind nicht kritisch, daher keine Nutzer-Benachrichtigung
+            }
+        }
+
+        // Validierungsfunktionen
+        function validateName(name) {
+            return name.trim().length >= 2;
+        }
+
+        function validateEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        }
+
+        function selectAppointment(appointment) {
+            console.log('Termin ausgewählt:', appointment);
+
+            // Parse appointment string: "Montag, 28.10 · 10:00" → "Der Termin am Montag, 28.10 um 10:00, bitte."
+            const parts = appointment.split('·');
+            const date = parts[0].trim();
+            const time = parts[1].trim();
+            const formattedMessage = `Der Termin am ${date} um ${time}, bitte.`;
+
+            const chatMessages = document.getElementById('chatMessages');
+
+            // User-Nachricht unterbricht Bot-Gruppierung
+            lastBotMessageTime = null;
+            lastBotMessageElement = null;
+
+            // User hat geschrieben - Flag setzen
+            userHasWritten = true;
+
+            // User-Nachricht mit ausgewähltem Termin (formatiert)
+            const userMessage = document.createElement('div');
+            userMessage.className = 'message user';
+            userMessage.innerHTML = `
+                <div>
+                    <div class="message-content">
+                        ${formattedMessage}
+                    </div>
+                    <div class="message-timestamp">
+                        <span>${getCurrentTime()}</span>
+                    </div>
+                </div>
+            `;
+            chatMessages.appendChild(userMessage);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            // Typing Text zeigen
+            setTimeout(() => {
+                showTypingText();
+
+                setTimeout(() => {
+                    hideTypingText();
+
+                    const now = Date.now();
+                    const isGrouped = lastBotMessageTime && (now - lastBotMessageTime) < 10000;
+                    if (isGrouped) {
+                        markPreviousBotAsGrouped();
+                    }
+                    lastBotMessageTime = now;
+
+                    // Bot-Nachricht mit Buchungsformular
+                    const formMessage = document.createElement('div');
+                    formMessage.className = isGrouped ? 'message bot grouped' : 'message bot';
+                    formMessage.innerHTML = `
+                        <div class="message-avatar">
+                            <svg viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <g transform="translate(25, 25) rotate(2) translate(-25, -25) translate(4, 12)">
+                                    <rect x="0" y="0" width="42" height="26" rx="2.5" fill="white"/>
+                                    <path d="M 20 25 Q 20 25, 20.8 25.8 L 26 32 Q 26.5 32.5, 27 32 L 32.2 25.8 Q 33 25, 33 25 Z"
+                                          fill="white" stroke="white" stroke-width="0"/>
+                                    <ellipse cx="13" cy="16" rx="2.8" ry="2.8" fill="#B7483E"/>
+                                    <ellipse cx="20" cy="17" rx="2.8" ry="2.8" fill="#B7483E"/>
+                                </g>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="message-content">
+                                Perfekt! Bitte geben Sie Ihre Kontaktdaten ein:
+                                <div class="booking-form" id="bookingFormContainer">
+                                    <input type="text" class="booking-input" id="bookingName" placeholder="Name">
+                                    <div class="error-message" id="nameError" style="display: none;">Bitte geben Sie einen gültigen Namen ein (mind. 2 Zeichen)</div>
+                                    <input type="email" class="booking-input" id="bookingEmail" placeholder="E-Mail-Adresse">
+                                    <div class="error-message" id="emailError" style="display: none;">Bitte geben Sie eine gültige E-Mail-Adresse ein</div>
+                                    <div class="privacy-checkbox-wrapper">
+                                        <input type="checkbox" class="privacy-checkbox" id="privacyCheckbox">
+                                        <label for="privacyCheckbox" class="privacy-checkbox-label">
+                                            Ich akzeptiere die <a href="#" onclick="event.preventDefault()">Datenschutzerklärung</a>
+                                        </label>
+                                    </div>
+                                    <div class="error-message" id="privacyError" style="display: none;">Bitte akzeptieren Sie die Datenschutzerklärung</div>
+                                    <button class="booking-submit" id="bookingSubmitBtn" onclick="submitBooking('${appointment}')">Termin buchen</button>
+                                </div>
+                            </div>
+                            <div class="message-timestamp">
+                                <span>${getCurrentTime()}</span>
+                                <span class="feedback-separator">·</span>
+                                <div class="feedback-buttons">
+                                    <button class="feedback-btn" onclick="handleFeedback('up', this)" title="Hilfreich">
+                                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M7 22V11M2 13V20C2 21.1046 2.89543 22 4 22H16.4262C17.907 22 19.1662 20.9197 19.3914 19.4562L20.4683 12.4562C20.7479 10.6389 19.3418 9 17.5032 9H14V4C14 2.89543 13.1046 2 12 2C11.4477 2 11 2.44772 11 3V3.56597C11 3.99187 10.8935 4.40959 10.6912 4.77974L7.34164 10.1478C7.12324 10.5412 6.67028 10.7649 6.19298 10.7138L4.27279 10.5028C3.02479 10.3796 2 11.3667 2 12.6197V13Z"/>
+                                        </svg>
+                                    </button>
+                                    <button class="feedback-btn" onclick="handleFeedback('down', this)" title="Nicht hilfreich">
+                                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M17 2V13M22 11V4C22 2.89543 21.1046 2 20 2H7.57377C6.09299 2 4.83375 3.08027 4.6086 4.54383L3.53165 11.5438C3.25211 13.3611 4.65821 15 6.49678 15H10V20C10 21.1046 10.8954 22 12 22C12.5523 22 13 21.5523 13 21V20.434C13 20.0081 13.1065 19.5904 13.3088 19.2203L16.6584 13.8522C16.8768 13.4588 17.3297 13.2351 17.807 13.2862L19.7272 13.4972C20.9752 13.6204 22 12.6333 22 11.3803V11Z"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    chatMessages.appendChild(formMessage);
+                    lastBotMessageElement = formMessage;
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }, 1500);
+            }, 500);
+        }
+
+        async function submitBooking(appointment) {
+            const name = document.getElementById('bookingName').value;
+            const email = document.getElementById('bookingEmail').value;
+            const nameInput = document.getElementById('bookingName');
+            const emailInput = document.getElementById('bookingEmail');
+            const privacyCheckbox = document.getElementById('privacyCheckbox');
+            const nameError = document.getElementById('nameError');
+            const emailError = document.getElementById('emailError');
+            const privacyError = document.getElementById('privacyError');
+
+            let isValid = true;
+
+            // Name-Validierung
+            if (!validateName(name)) {
+                nameInput.classList.add('error');
+                nameError.style.display = 'block';
+                isValid = false;
+            } else {
+                nameInput.classList.remove('error');
+                nameError.style.display = 'none';
+            }
+
+            // Email-Validierung
+            if (!validateEmail(email)) {
+                emailInput.classList.add('error');
+                emailError.style.display = 'block';
+                isValid = false;
+            } else {
+                emailInput.classList.remove('error');
+                emailError.style.display = 'none';
+            }
+
+            // Privacy-Checkbox-Validierung
+            if (!privacyCheckbox.checked) {
+                privacyError.style.display = 'block';
+                isValid = false;
+            } else {
+                privacyError.style.display = 'none';
+            }
+
+            if (isValid) {
+                // Inputs deaktivieren während API-Call
+                nameInput.disabled = true;
+                emailInput.disabled = true;
+                privacyCheckbox.disabled = true;
+
+                // Submit-Button und Formular animieren
+                const submitBtn = document.getElementById('bookingSubmitBtn');
+                const formContainer = document.getElementById('bookingFormContainer');
+
+                submitBtn.classList.add('hide');
+                formContainer.classList.add('submitted');
+
+                // Parse Appointment String: "Montag, 28.10 · 10:00"
+                const parts = appointment.split('·').map(s => s.trim());
+                const datePart = parts[0]; // "Montag, 28.10"
+                const timePart = parts[1]; // "10:00"
+                
+                // Extrahiere Tag und Monat aus "Montag, 28.10"
+                const dateMatch = datePart.match(/(\d{2})\.(\d{2})/);
+                let isoDate = '';
+                
+                if (dateMatch) {
+                    const day = dateMatch[1];
+                    const month = dateMatch[2];
+                    const currentYear = new Date().getFullYear();
+                    const germanDate = `${day}.${month}.${currentYear}`;
+                    isoDate = formatDateISO(germanDate); // Nutzt Helper-Funktion
+                }
+
+                // Typing-Indikator anzeigen
+                    showTypingText();
+
+                try {
+                    // API-Call zur Buchung
+                    const response = await apiCall(API_CONFIG.endpoints.booking, {
+                        action: 'create',
+                        session_id: getOrCreateSessionId(),
+                        booking_data: {
+                            service: 'Beratungsgespräch',
+                            date: isoDate,
+                            time: timePart,
+                            customer_name: name,
+                            customer_email: email
+                        }
+                    });
+
+                    // Typing-Indikator ausblenden
+                        hideTypingText();
+
+                    // Bestätigungsnachricht anzeigen
+                    if (response.message) {
+                        addBotMessage(response.message);
+                    } else {
+                        // Fallback-Nachricht falls Backend keine message zurückgibt
+                        addBotMessage(`Vielen Dank! Ihr Termin wurde erfolgreich gebucht. Sie erhalten eine Bestätigungsmail an <span style="color: #B7483E;">${email}</span>.`);
+                    }
+
+                        // Final Feedback nach Termin-Buchung anzeigen
+                    setTimeout(() => {
+                        showFinalFeedback();
+                    }, 1000);
+
+                } catch (error) {
+                    // Typing-Indikator ausblenden
+                    hideTypingText();
+
+                    // Fehler anzeigen
+                    showErrorMessage('Die Buchung konnte nicht abgeschlossen werden. Bitte versuchen Sie es erneut.');
+                    
+                    // Inputs wieder aktivieren
+                    nameInput.disabled = false;
+                    emailInput.disabled = false;
+                    privacyCheckbox.disabled = false;
+                    submitBtn.classList.remove('hide');
+                    formContainer.classList.remove('submitted');
+
+                    console.error('Fehler bei Buchung:', error);
+                }
+            }
+        }
+
+        async function sendMessage() {
+            // Cooldown-Prüfung: Blockiere wenn Bot tippt
+            if (isBotTyping) {
+                console.log('Cooldown aktiv: Bot schreibt noch...');
+                return;
+            }
+
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+
+            if (!message) return;
+
+                // User hat geschrieben - Flag setzen
+                userHasWritten = true;
+
+            // User-Nachricht hinzufügen
+            addUserMessage(message);
+
+                // Input leeren
+                input.value = '';
+                input.style.height = 'auto';
+
+            // Typing-Indikator anzeigen
+            showTypingText();
+
+            try {
+                // API-Call zum Chat-Endpoint
+                console.log('%c📤 SENDING MESSAGE TO BACKEND', 'color: #ff9900; font-weight: bold');
+                console.log('Message:', message);
+                console.log('Session ID:', getOrCreateSessionId());
+                console.log('Endpoint:', API_CONFIG.baseUrl + API_CONFIG.endpoints.chat);
+                
+                const response = await apiCall(API_CONFIG.endpoints.chat, {
+                    content: message,
+                    session_id: getOrCreateSessionId()
+                });
+                
+                console.log('%c✅ RESPONSE FROM BACKEND RECEIVED', 'color: #00ff00; font-weight: bold');
+                console.log('Response:', response);
+
+                // Typing-Indikator ausblenden
+                hideTypingText();
+
+                // Handle special actions from backend
+                if (response.action === 'open_contact_form') {
+                    addBotMessage(response.message);
+                            setTimeout(() => {
+                        openContactForm();
+                    }, 500);
+                    return;
+                }
+
+                if (response.action === 'termin') {
+                    // Für später: Termin-Flow
+                    const input = document.getElementById('messageInput');
+                    input.value = 'termin';
+                    sendMessage();
+                    return;
+                }
+
+                if (response.action === 'slot_selection' && response.slots) {
+                    addBotMessage(response.message);
+                    displaySlotButtons(response.slots);
+                    
+                    // Zeige Hinweis-Nachricht nach kurzer Verzögerung
+                    if (response.additional_message) {
+                        setTimeout(() => {
+                            addBotMessage(response.additional_message);
+                        }, 800);
+                    }
+                    
+                    return;
+                }
+
+                // Bot-Antwort anzeigen
+                if (response.message) {
+                    addBotMessage(response.message);
+                }
+
+                // NEU: Action Handler für Contact Forms
+                if (response.actions && response.actions.length > 0) {
+                    const action = response.actions[0];
+                    console.log('📋 Processing action:', action);
+                    
+                    // BOOKING Contact Form (für Terminbuchung)
+                    if (action.type === 'contact_form' && action.form) {
+                        console.log('📝 Displaying booking contact form:', action.form);
+                        setTimeout(() => {
+                            displayBookingContactForm(action.form); // ← BOOKING-spezifische Funktion
+                        }, 500);
+                        return; // Wichtig: Verhindert weitere Message-Verarbeitung
+                    }
+                }
+
+                // Quick Replies anzeigen (falls vorhanden)
+                if (response.quick_replies && response.quick_replies.length > 0) {
+                    addQuickReplies(response.quick_replies);
+                }
+
+                // Wenn requires_booking Flag gesetzt ist, könnte hier Buchungslogik ausgelöst werden
+                // Dies hängt davon ab, wie das Backend strukturiert ist
+
+            } catch (error) {
+                // Typing-Indikator ausblenden
+                hideTypingText();
+
+                // Fehlermeldung anzeigen
+                showErrorMessage(error.message);
+                
+                console.error('Fehler beim Senden der Nachricht:', error);
+            }
+        }
+
+        // ============================================
+        // BOOKING CONTACT FORM (für Terminbuchung)
+        // ============================================
+        
+        /**
+         * Zeigt ein dynamisches Kontaktformular für Terminbuchungen an
+         * Verbesserte Version mit Validierung, keine Labels, Formular bleibt sichtbar
+         * @param {Object} formConfig - Formular-Konfiguration mit fields, submit_label, submit_message
+         */
+        function displayBookingContactForm(formConfig) {
+            console.log('=== displayBookingContactForm called ===');
+            
+            const chatMessages = document.getElementById('chatMessages');
+            const now = Date.now();
+            
+            if (!chatMessages) {
+                console.error('❌ chatMessages element not found!');
+                return;
+            }
+            
+            // Prüfe ob Nachricht gruppiert werden soll (innerhalb 10 Sekunden)
+            const shouldGroup = lastBotMessageTime && (now - lastBotMessageTime) < 10000;
+            
+            if (shouldGroup) {
+                markPreviousBotAsGrouped();
+            }
+            
+            lastBotMessageTime = now;
+            
+            // Erstelle Bot-Message Container
+            const botMessage = document.createElement('div');
+            botMessage.className = shouldGroup ? 'message bot grouped' : 'message bot';
+            
+            // Message Content Wrapper
+            const messageContentWrapper = document.createElement('div');
+            
+            // Erstelle das Formular
+            const form = document.createElement('form');
+            form.id = 'bookingContactForm';
+            form.noValidate = true; // Custom validation
+            form.style.cssText = 'display: flex; flex-direction: column; gap: 12px;';
+            
+            // Error Message Container (initially hidden)
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = `
+                display: none;
+                padding: 10px 12px;
+                background: #fee;
+                border-left: 3px solid #f44;
+                border-radius: 6px;
+                font-size: 13px;
+                color: #c33;
+                margin-bottom: 4px;
+            `;
+            form.appendChild(errorDiv);
+            
+            // Erstelle Input-Felder (OHNE Labels!)
+            formConfig.fields.forEach((field, index) => {
+                const input = document.createElement('input');
+                input.type = field.type;
+                input.id = `booking_${field.id}`;
+                input.name = field.id;
+                input.placeholder = field.placeholder; // Nur Placeholder, kein Label!
+                input.required = field.required;
+                input.style.cssText = `
+                    width: 100%;
+                    padding: 12px 14px;
+                    border: 1.5px solid #e0e0e0;
+                    border-radius: 8px;
+                    font-size: 14px;
+                    font-family: inherit;
+                    color: #374151;
+                    background: white;
+                    transition: all 0.2s ease;
+                    box-sizing: border-box;
+                `;
+                
+                if (field.minLength) {
+                    input.minLength = field.minLength;
+                }
+                
+                // Note: Event listeners werden nach innerHTML neu angehängt
+                form.appendChild(input);
+            });
+            
+            // Datenschutzerklärung mit Checkbox
+            const privacyContainer = document.createElement('div');
+            privacyContainer.id = 'privacyContainer';
+            privacyContainer.style.cssText = `
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-top: 4px;
+            `;
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = 'privacyCheckbox';
+            checkbox.required = true;
+            checkbox.style.cssText = `
+                cursor: pointer;
+                width: 16px;
+                height: 16px;
+                accent-color: #B7483E;
+                flex-shrink: 0;
+            `;
+            
+            const privacyLabel = document.createElement('label');
+            privacyLabel.htmlFor = 'privacyCheckbox';
+            privacyLabel.style.cssText = `
+                font-size: 12px;
+                color: #666;
+                line-height: 1.4;
+                cursor: pointer;
+                user-select: none;
+            `;
+            privacyLabel.innerHTML = `Ich akzeptiere die <a href="/datenschutz" target="_blank" style="color: #B7483E; text-decoration: none;">Datenschutzerklärung</a>`;
+            
+            privacyContainer.appendChild(checkbox);
+            privacyContainer.appendChild(privacyLabel);
+            form.appendChild(privacyContainer);
+            
+            // Submit Button
+            const submitBtn = document.createElement('button');
+            submitBtn.type = 'submit';
+            submitBtn.textContent = formConfig.submit_label || 'Absenden';
+            submitBtn.style.cssText = `
+                width: 100%;
+                padding: 12px 20px;
+                background: #B7483E;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+                font-weight: 600;
+                font-size: 14px;
+                font-family: inherit;
+                margin-top: 8px;
+                transition: background 0.2s ease;
+                opacity: 1;
+            `;
+            
+            // Note: Button Event listeners werden nach innerHTML neu angehängt
+            form.appendChild(submitBtn);
+            
+            // Form Submit Handler
+            const submitHandler = (e) => {
+                e.preventDefault();
+                
+                // Validation
+                const formData = {};
+                let hasError = false;
+                let errorMessage = '';
+                
+                // Check privacy checkbox
+                const privacyCheckbox = document.getElementById('privacyCheckbox');
+                if (!privacyCheckbox.checked) {
+                    hasError = true;
+                    errorMessage = 'Bitte akzeptiere die Datenschutzerklärung.';
+                    errorDiv.textContent = errorMessage;
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                
+                formConfig.fields.forEach(field => {
+                    const input = document.getElementById(`booking_${field.id}`);
+                    const value = input.value.trim();
+                    
+                    if (field.required && !value) {
+                        hasError = true;
+                        errorMessage = `Bitte fülle das Feld "${field.placeholder}" aus.`;
+                        input.style.borderColor = '#f44';
+                        return;
+                    }
+                    
+                    if (field.type === 'email' && value) {
+                        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                        if (!emailRegex.test(value)) {
+                            hasError = true;
+                            errorMessage = 'Bitte gib eine gültige E-Mail-Adresse ein.';
+                            input.style.borderColor = '#f44';
+                            return;
+                        }
+                    }
+                    
+                    if (field.minLength && value.length < field.minLength) {
+                        hasError = true;
+                        errorMessage = `${field.placeholder} muss mindestens ${field.minLength} Zeichen haben.`;
+                        input.style.borderColor = '#f44';
+                        return;
+                    }
+                    
+                    formData[field.id] = value;
+                });
+                
+                // Show error if validation failed
+                if (hasError) {
+                    errorDiv.textContent = errorMessage;
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                
+                console.log('Form submitted:', formData);
+                
+                // Disable all inputs (make readonly) - STÄRKER AUSGRAUEN
+                formConfig.fields.forEach(field => {
+                    const input = document.getElementById(`booking_${field.id}`);
+                    input.readOnly = true;
+                    input.style.background = '#f3f3f3';
+                    input.style.cursor = 'not-allowed';
+                    input.style.borderColor = '#d0d0d0';
+                    input.style.color = '#888';
+                    input.style.opacity = '0.7';
+                });
+                
+                // Disable checkbox (bleibt sichtbar und checked)
+                const privacyCheckboxEl = document.getElementById('privacyCheckbox');
+                if (privacyCheckboxEl) {
+                    privacyCheckboxEl.disabled = true;
+                    privacyCheckboxEl.style.cursor = 'not-allowed';
+                }
+                
+                // Datenschutz-Text bleibt sichtbar, nur etwas transparenter
+                const privacyContainerEl = document.getElementById('privacyContainer');
+                if (privacyContainerEl) {
+                    privacyContainerEl.style.opacity = '0.6';
+                }
+                
+                // Smooth remove button - Hole Button aus DOM
+                const submitButton = document.querySelector('#bookingContactForm button[type="submit"]');
+                if (submitButton) {
+                    const btnHeight = submitButton.offsetHeight;
+                    submitButton.style.maxHeight = btnHeight + 'px';
+                    submitButton.style.overflow = 'hidden';
+                    submitButton.style.transition = 'opacity 0.3s ease, max-height 0.4s ease 0.3s, margin-top 0.4s ease 0.3s, padding 0.4s ease 0.3s';
+                    submitButton.style.opacity = '0';
+                    
+                    setTimeout(() => {
+                        submitButton.style.maxHeight = '0';
+                        submitButton.style.marginTop = '0';
+                        submitButton.style.paddingTop = '0';
+                        submitButton.style.paddingBottom = '0';
+                        
+                        setTimeout(() => {
+                            submitButton.remove();
+                        }, 400);
+                    }, 300);
+                }
+                
+                // WICHTIG: Keine addUserMessage() aufrufen!
+                // Das Formular bleibt sichtbar mit den ausgefüllten Daten
+                
+                // Sende Daten an Backend
+                sendBookingData(formData);
+            };
+            
+            // Timestamp erstellen
+            const timestampHTML = `
+                <div class="message-timestamp">
+                    <span>${getCurrentTime()}</span>
+                </div>
+            `;
+            
+            // Bot-Message zusammenbauen
+            botMessage.innerHTML = `
+                <div class="message-avatar">
+                    ${getBotAvatarHTML()}
+                </div>
+                <div>
+                    <div class="message-content">
+                        ${form.outerHTML}
+                    </div>
+                    ${timestampHTML}
+                </div>
+            `;
+            
+            // Event-Listener nach dem Einfügen erneut anhängen
+            chatMessages.appendChild(botMessage);
+            
+            // Form neu referenzieren und alle Event-Listener neu anhängen
+            const insertedForm = botMessage.querySelector('#bookingContactForm');
+            if (insertedForm) {
+                // Error Div Referenz
+                const errorDiv = insertedForm.querySelector('div[style*="display: none"]');
+                
+                // Submit Handler
+                insertedForm.addEventListener('submit', submitHandler);
+                
+                // Input Events KOMPLETT NEU definieren und anhängen
+                formConfig.fields.forEach(field => {
+                    const input = document.getElementById(`booking_${field.id}`);
+                    if (input) {
+                        // Focus Handler - Background bleibt weiß
+                        input.addEventListener('focus', () => {
+                            input.style.borderColor = 'rgba(183, 72, 62, 0.4)';
+                            input.style.boxShadow = '0 0 0 3px rgba(183, 72, 62, 0.08)';
+                            input.style.outline = 'none';
+                            input.style.background = '#FFFFFF';
+                        });
+                        
+                        // Blur Handler
+                        input.addEventListener('blur', () => {
+                            input.style.borderColor = '#e0e0e0';
+                            input.style.boxShadow = 'none';
+                            input.style.background = 'white';
+                        });
+                        
+                        // Input Handler
+                        input.addEventListener('input', () => {
+                            input.style.borderColor = 'rgba(183, 72, 62, 0.4)';
+                            if (errorDiv) errorDiv.style.display = 'none';
+                        });
+                    }
+                });
+                
+                // Button Hover Events - Nur fill dunkler, kein Y-offset, kein Shadow
+                const btn = insertedForm.querySelector('button[type="submit"]');
+                if (btn) {
+                    btn.addEventListener('mouseenter', () => {
+                        btn.style.background = '#a03d33';
+                    });
+                    
+                    btn.addEventListener('mouseleave', () => {
+                        btn.style.background = '#B7483E';
+                    });
+                }
+            }
+            
+            lastBotMessageElement = botMessage;
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Auto-focus erstes Feld
+            setTimeout(() => {
+                const firstInput = insertedForm?.querySelector('input');
+                if (firstInput) firstInput.focus();
+            }, 100);
+        }
+
+        // ============================================
+        // BOOKING DATA SUBMISSION
+        // ============================================
+        
+        /**
+         * Sendet die ausgefüllten Kontaktdaten an das Backend
+         * @param {Object} formData - Die gesammelten Formulardaten
+         */
+        async function sendBookingData(formData) {
+            console.log('📤 Sending booking data:', formData);
+            
+            // Typing-Indikator anzeigen
+            showTypingText();
+            
+            try {
+                // Verwende apiCall() für konsistentes Error-Handling
+                const data = await apiCall(API_CONFIG.endpoints.chat, {
+                    content: '__BOOKING_SUBMIT__',
+                    session_id: getOrCreateSessionId(),
+                    booking_data: formData
+                });
+                
+                console.log('✅ Booking response:', data);
+                
+                // Typing-Indikator ausblenden
+                hideTypingText();
+                
+                // Zeige Bot-Antwort
+                if (data.message) {
+                    addBotMessage(data.message);
+                }
+                
+                // Handle weitere Actions falls vorhanden
+                if (data.actions && data.actions.length > 0) {
+                    const action = data.actions[0];
+                    console.log('📋 Additional actions after booking:', action);
+                    
+                    // Hier könnten weitere Actions verarbeitet werden
+                    if (action.type === 'contact_form' && action.form) {
+                        setTimeout(() => {
+                            displayBookingContactForm(action.form);
+                        }, 500);
+                    }
+                }
+                
+            } catch (error) {
+                console.error('❌ Booking error:', error);
+                
+                // Typing-Indikator ausblenden
+                hideTypingText();
+                
+                // Zeige Fehlermeldung
+                showErrorMessage('Es gab einen Fehler beim Buchen. Bitte versuche es erneut.');
+            }
+        }
+
+        function handleQuickActionClick(action) {
+            console.log('Quick Action geklickt:', action);
+
+            // Mapping der Quick Actions zu vordefinierten Nachrichten
+            const messages = {
+                'termin': 'Ich würde gerne einen Termin vereinbaren.',
+                'produkte': 'Was bietet Ihr genau an?',
+                'kontakt': 'Ich würde gerne Kontakt per Anfrage aufnehmen.'
+            };
+
+            const message = messages[action];
+
+            if (message) {
+                const input = document.getElementById('messageInput');
+                input.value = message;
+                sendMessage();
+                return;
+            }
+
+            // Fallback für alte Implementierung (kann später entfernt werden)
+            const chatMessages = document.getElementById('chatMessages');
+
+            // User-Nachricht unterbricht Bot-Gruppierung
+            lastBotMessageTime = null;
+            lastBotMessageElement = null;
+
+            if (action === 'kontakt') {
+                // User-Nachricht
+                const userMessage = document.createElement('div');
+                userMessage.className = 'message user';
+                userMessage.innerHTML = `
+                    <div>
+                        <div class="message-content">
+                            Ich würde gerne Kontakt aufnehmen.
+                        </div>
+                        <div class="message-timestamp">
+                            <span>${getCurrentTime()}</span>
+                        </div>
+                    </div>
+                `;
+                chatMessages.appendChild(userMessage);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+
+                // Typing Text zeigen
+                setTimeout(() => {
+                    showTypingText();
+
+                    setTimeout(() => {
+                        hideTypingText();
+
+                        const now = Date.now();
+                        const isGrouped = lastBotMessageTime && (now - lastBotMessageTime) < 10000;
+                        if (isGrouped) {
+                            markPreviousBotAsGrouped();
+                        }
+                        lastBotMessageTime = now;
+
+                        // Bot-Nachricht mit Kontakt-Button
+                        const contactMessage = document.createElement('div');
+                        contactMessage.className = isGrouped ? 'message bot grouped' : 'message bot';
+                        contactMessage.innerHTML = `
+                            <div class="message-avatar">
+                                <svg viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <g transform="translate(25, 25) rotate(2) translate(-25, -25) translate(4, 12)">
+                                        <rect x="0" y="0" width="42" height="26" rx="2.5" fill="white"/>
+                                        <path d="M 20 25 Q 20 25, 20.8 25.8 L 26 32 Q 26.5 32.5, 27 32 L 32.2 25.8 Q 33 25, 33 25 Z"
+                                              fill="white" stroke="white" stroke-width="0"/>
+                                        <ellipse cx="13" cy="16" rx="2.8" ry="2.8" fill="#B7483E"/>
+                                        <ellipse cx="20" cy="17" rx="2.8" ry="2.8" fill="#B7483E"/>
+                                    </g>
+                                </svg>
+                            </div>
+                            <div>
+                                <div class="message-content">
+                                    Gerne! Unser Team wird sich schnellstmöglich bei Ihnen melden.
+                                    <button class="contact-handover-btn" onclick="openContactForm()">
+                                        Kontaktformular öffnen
+                                        <svg viewBox="0 0 24 24">
+                                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="message-timestamp">
+                                    <span>${getCurrentTime()}</span>
+                                    <span class="feedback-separator">·</span>
+                                    <div class="feedback-buttons">
+                                        <button class="feedback-btn" onclick="handleFeedback('up', this)" title="Hilfreich">
+                                            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M7 22V11M2 13V20C2 21.1046 2.89543 22 4 22H16.4262C17.907 22 19.1662 20.9197 19.3914 19.4562L20.4683 12.4562C20.7479 10.6389 19.3418 9 17.5032 9H14V4C14 2.89543 13.1046 2 12 2C11.4477 2 11 2.44772 11 3V3.56597C11 3.99187 10.8935 4.40959 10.6912 4.77974L7.34164 10.1478C7.12324 10.5412 6.67028 10.7649 6.19298 10.7138L4.27279 10.5028C3.02479 10.3796 2 11.3667 2 12.6197V13Z"/>
+                                            </svg>
+                                        </button>
+                                        <button class="feedback-btn" onclick="handleFeedback('down', this)" title="Nicht hilfreich">
+                                            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                <path d="M17 2V13M22 11V4C22 2.89543 21.1046 2 20 2H7.57377C6.09299 2 4.83375 3.08027 4.6086 4.54383L3.53165 11.5438C3.25211 13.3611 4.65821 15 6.49678 15H10V20C10 21.1046 10.8954 22 12 22C12.5523 22 13 21.5523 13 21V20.434C13 20.0081 13.1065 19.5904 13.3088 19.2203L16.6584 13.8522C16.8768 13.4588 17.3297 13.2351 17.807 13.2862L19.7272 13.4972C20.9752 13.6204 22 12.6333 22 11.3803V11Z"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        chatMessages.appendChild(contactMessage);
+                        lastBotMessageElement = contactMessage;
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                    }, 1500);
+                }, 500);
+            } else if (action === 'termin') {
+                // Simuliere typing "termin" und trigger termin flow
+                const input = document.getElementById('messageInput');
+                input.value = 'termin';
+                sendMessage();
+            }
+        }
+
+        function openContactForm() {
+            console.log('Öffne Kontaktformular...');
+            const chatContainer = document.getElementById('chatContainer');
+            const contactFormContainer = document.getElementById('contactFormContainer');
+
+            // Chat verstecken, Kontaktformular anzeigen
+            chatContainer.classList.remove('open');
+            contactFormContainer.classList.add('open');
+        }
+
+        function closeContactForm() {
+            console.log('Schließe Kontaktformular, gehe zurück zum Chat...');
+            const chatContainer = document.getElementById('chatContainer');
+            const contactFormContainer = document.getElementById('contactFormContainer');
+
+            // Kontaktformular verstecken, Chat anzeigen
+            contactFormContainer.classList.remove('open');
+            chatContainer.classList.add('open');
+        }
+
+        function closeContactFormCompletely() {
+            console.log('Schließe Kontaktformular komplett...');
+            const chatContainer = document.getElementById('chatContainer');
+            const contactFormContainer = document.getElementById('contactFormContainer');
+            const button = document.getElementById('chatButton');
+
+            // Kontaktformular schließen
+            contactFormContainer.classList.remove('open');
+
+            // Chat auch schließen
+            chatContainer.classList.remove('open');
+            button.classList.remove('open');
+        }
+
+        // Tracking ob Feedback bereits angezeigt wurde
+        let feedbackShown = false;
+
+        // Timer für Inaktivität und Chat-Schließen
+        let inactivityTimer = null;
+        let chatClosedTimer = null;
+        let showFeedbackOnOpen = false;
+
+        // Inaktivitäts-Timer zurücksetzen
+        function resetInactivityTimer() {
+            // Nur Timer starten wenn Chat offen ist und Feedback noch nicht gezeigt wurde
+            const container = document.getElementById('chatContainer');
+            if (!container.classList.contains('open') || feedbackShown) {
+                return;
+            }
+
+            // Alten Timer clearen
+            if (inactivityTimer) {
+                clearTimeout(inactivityTimer);
+            }
+
+            // Neuen Timer für 30 Sekunden setzen
+            inactivityTimer = setTimeout(() => {
+                showFinalFeedback();
+            }, 30000); // 30 Sekunden
+        }
+
+        // Chat-Schließen Timer starten
+        function startChatClosedTimer() {
+            // Nur Timer starten wenn Feedback noch nicht gezeigt wurde UND User geschrieben hat
+            if (feedbackShown || !userHasWritten) {
+                return;
+            }
+
+            // Alten Timer clearen
+            if (chatClosedTimer) {
+                clearTimeout(chatClosedTimer);
+            }
+
+            // Timer für 30 Sekunden nach Chat-Schließen
+            chatClosedTimer = setTimeout(() => {
+                const badge = document.getElementById('notificationBadge');
+                badge.classList.add('show');
+                showFeedbackOnOpen = true;
+            }, 30000); // 30 Sekunden
+        }
+
+        function showFinalFeedback() {
+            if (feedbackShown) {
+                return; // Feedback nur einmal anzeigen
+            }
+            feedbackShown = true;
+
+            const chatMessages = document.getElementById('chatMessages');
+
+            setTimeout(() => {
+                const feedbackMessage = document.createElement('div');
+                feedbackMessage.className = 'feedback-message';
+                feedbackMessage.innerHTML = `
+                    <div class="feedback-message-title">Wurde Ihr Anliegen erfolgreich gelöst?</div>
+                    <div class="feedback-message-subtitle">Sie können trotzdem weiter chatten.</div>
+                    <div class="feedback-buttons">
+                        <button class="feedback-response-btn" onclick="handleFinalFeedback('yes')">
+                            <svg viewBox="0 0 24 24">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            Ja
+                        </button>
+                        <button class="feedback-response-btn" onclick="handleFinalFeedback('no')">
+                            <svg viewBox="0 0 24 24">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                            Nein
+                        </button>
+                    </div>
+                    <div class="feedback-input-container" id="feedbackInputContainer">
+                        <label class="feedback-input-label">Was hat Ihnen nicht gefallen? (optional)</label>
+                        <div class="feedback-input-wrapper">
+                            <textarea class="feedback-input" id="feedbackInput" placeholder="Ihre Nachricht..." oninput="validateFeedbackInput()"></textarea>
+                            <button class="feedback-submit-btn" id="feedbackSubmitBtn" onclick="submitNegativeFeedback()" disabled title="Mindestens 10 Zeichen erforderlich">
+                                Abschicken
+                                <svg viewBox="0 0 24 24">
+                                    <line x1="5" y1="12" x2="19" y2="12"/>
+                                    <polyline points="12 5 19 12 12 19"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                chatMessages.appendChild(feedbackMessage);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }, 1000);
+        }
+
+        async function handleFinalFeedback(response) {
+            console.log('Final Feedback:', response);
+
+            const chatMessages = document.getElementById('chatMessages');
+            const feedbackInputContainer = document.getElementById('feedbackInputContainer');
+
+            if (response === 'no') {
+                // Bei "Nein": Input-Feld anzeigen und offen lassen
+                if (feedbackInputContainer) {
+                    feedbackInputContainer.classList.add('show');
+
+                    // Scroll zum Input-Feld
+                    setTimeout(() => {
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                        // Fokus auf Textarea setzen
+                        const feedbackInput = document.getElementById('feedbackInput');
+                        if (feedbackInput) {
+                            feedbackInput.focus();
+                        }
+                    }, 300);
+
+                    // Buttons deaktivieren und "Nein" als pressed markieren
+                    const buttons = document.querySelectorAll('.feedback-response-btn');
+                    buttons.forEach(btn => {
+                        if (btn.textContent.trim().includes('Nein')) {
+                            btn.style.background = '#d1d5db'; // Darker gray for pressed state
+                            btn.style.opacity = '1';
+                        } else {
+                            btn.style.opacity = '0.5';
+                        }
+                        btn.disabled = true;
+                        btn.style.cursor = 'not-allowed';
+                    });
+                }
+                return; // Input-Feld bleibt offen bis User Submit-Button drückt
+            }
+
+            // Bei "Ja": Feedback an API senden
+            try {
+                await apiCall(API_CONFIG.endpoints.feedback, {
+                    session_id: getOrCreateSessionId(),
+                    rating: 5,
+                    type: 'resolution',
+                    comment: ''
+                });
+
+                console.log('Positives Feedback erfolgreich gesendet');
+            } catch (error) {
+                console.error('Feedback konnte nicht gesendet werden:', error);
+                // Auch bei Fehler fortfahren (Feedback ist optional)
+            }
+
+            // Feedback-Nachricht schließen
+            proceedWithFeedbackResponse(response);
+        }
+
+        function validateFeedbackInput() {
+            const feedbackInput = document.getElementById('feedbackInput');
+            const submitBtn = document.getElementById('feedbackSubmitBtn');
+
+            if (feedbackInput && submitBtn) {
+                const textLength = feedbackInput.value.trim().length;
+                submitBtn.disabled = textLength < 10;
+                submitBtn.title = textLength < 10
+                    ? 'Mindestens 10 Zeichen erforderlich'
+                    : 'Absenden';
+            }
+        }
+
+        async function submitNegativeFeedback() {
+            const feedbackInput = document.getElementById('feedbackInput');
+            const feedbackText = feedbackInput ? feedbackInput.value.trim() : '';
+
+            // API-Call mit negativem Feedback
+            try {
+                await apiCall(API_CONFIG.endpoints.feedback, {
+                    session_id: getOrCreateSessionId(),
+                    rating: 1,
+                    type: 'resolution',
+                    comment: feedbackText
+                });
+
+                console.log('Negatives Feedback erfolgreich gesendet');
+            } catch (error) {
+                console.error('Feedback konnte nicht gesendet werden:', error);
+                // Auch bei Fehler fortfahren (Feedback ist optional)
+            }
+
+            // Feedback-Nachricht entfernen und Antwort zeigen
+            proceedWithFeedbackResponse('no');
+        }
+
+        function proceedWithFeedbackResponse(response) {
+            const chatMessages = document.getElementById('chatMessages');
+
+            // Feedback-Nachricht mit smooth Animation entfernen
+            const feedbackMessage = document.querySelector('.feedback-message');
+            if (feedbackMessage) {
+                feedbackMessage.classList.add('hiding');
+                setTimeout(() => {
+                    feedbackMessage.remove();
+                }, 400);
+            }
+
+            // Typing Text zeigen
+            setTimeout(() => {
+                showTypingText();
+
+                setTimeout(() => {
+                    hideTypingText();
+
+                    const now = Date.now();
+                    const isGrouped = lastBotMessageTime && (now - lastBotMessageTime) < 10000;
+                    if (isGrouped) {
+                        markPreviousBotAsGrouped();
+                    }
+                    lastBotMessageTime = now;
+
+                    // Dankes-Nachricht basierend auf Response
+                    const responseText = response === 'yes'
+                        ? 'Vielen Dank für Ihr Feedback! Es freut uns, dass wir Ihnen helfen konnten.'
+                        : 'Vielen Dank für Ihr Feedback. Unser Team wird sich mit Ihnen in Verbindung setzen, um Ihr Anliegen weiter zu klären.';
+
+                    const thankYouMessage = document.createElement('div');
+                    thankYouMessage.className = isGrouped ? 'message bot grouped' : 'message bot';
+                    thankYouMessage.innerHTML = `
+                        <div class="message-avatar">
+                            <svg viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <g transform="translate(25, 25) rotate(2) translate(-25, -25) translate(4, 12)">
+                                    <rect x="0" y="0" width="42" height="26" rx="2.5" fill="white"/>
+                                    <path d="M 20 25 Q 20 25, 20.8 25.8 L 26 32 Q 26.5 32.5, 27 32 L 32.2 25.8 Q 33 25, 33 25 Z"
+                                          fill="white" stroke="white" stroke-width="0"/>
+                                    <ellipse cx="13" cy="16" rx="2.8" ry="2.8" fill="#B7483E"/>
+                                    <ellipse cx="20" cy="17" rx="2.8" ry="2.8" fill="#B7483E"/>
+                                </g>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="message-content">
+                                ${responseText}
+                            </div>
+                            <div class="message-timestamp">
+                                <span>${getCurrentTime()}</span>
+                                <span class="feedback-separator">·</span>
+                                <div class="feedback-buttons">
+                                    <button class="feedback-btn" onclick="handleFeedback('up', this)" title="Hilfreich">
+                                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M7 22V11M2 13V20C2 21.1046 2.89543 22 4 22H16.4262C17.907 22 19.1662 20.9197 19.3914 19.4562L20.4683 12.4562C20.7479 10.6389 19.3418 9 17.5032 9H14V4C14 2.89543 13.1046 2 12 2C11.4477 2 11 2.44772 11 3V3.56597C11 3.99187 10.8935 4.40959 10.6912 4.77974L7.34164 10.1478C7.12324 10.5412 6.67028 10.7649 6.19298 10.7138L4.27279 10.5028C3.02479 10.3796 2 11.3667 2 12.6197V13Z"/>
+                                        </svg>
+                                    </button>
+                                    <button class="feedback-btn" onclick="handleFeedback('down', this)" title="Nicht hilfreich">
+                                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path d="M17 2V13M22 11V4C22 2.89543 21.1046 2 20 2H7.57377C6.09299 2 4.83375 3.08027 4.6086 4.54383L3.53165 11.5438C3.25211 13.3611 4.65821 15 6.49678 15H10V20C10 21.1046 10.8954 22 12 22C12.5523 22 13 21.5523 13 21V20.434C13 20.0081 13.1065 19.5904 13.3088 19.2203L16.6584 13.8522C16.8768 13.4588 17.3297 13.2351 17.807 13.2862L19.7272 13.4972C20.9752 13.6204 22 12.6333 22 11.3803V11Z"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    chatMessages.appendChild(thankYouMessage);
+                    lastBotMessageElement = thankYouMessage;
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }, 1500);
+            }, 500);
+        }
+
+        function submitContactForm() {
+            const name = document.getElementById('contactName').value;
+            const email = document.getElementById('contactEmail').value;
+            const message = document.getElementById('contactMessage').value;
+            const privacyCheckbox = document.getElementById('contactPrivacyCheckbox');
+
+            const nameInput = document.getElementById('contactName');
+            const emailInput = document.getElementById('contactEmail');
+            const messageInput = document.getElementById('contactMessage');
+
+            const nameError = document.getElementById('contactNameError');
+            const emailError = document.getElementById('contactEmailError');
+            const messageError = document.getElementById('contactMessageError');
+            const privacyError = document.getElementById('contactPrivacyError');
+
+            let isValid = true;
+
+            // Name-Validierung
+            if (!validateName(name)) {
+                nameInput.classList.add('error');
+                nameError.style.display = 'block';
+                isValid = false;
+            } else {
+                nameInput.classList.remove('error');
+                nameError.style.display = 'none';
+            }
+
+            // Email-Validierung
+            if (!validateEmail(email)) {
+                emailInput.classList.add('error');
+                emailError.style.display = 'block';
+                isValid = false;
+            } else {
+                emailInput.classList.remove('error');
+                emailError.style.display = 'none';
+            }
+
+            // Message-Validierung (mind. 10 Zeichen)
+            if (message.trim().length < 10) {
+                messageInput.classList.add('error');
+                messageError.style.display = 'block';
+                isValid = false;
+            } else {
+                messageInput.classList.remove('error');
+                messageError.style.display = 'none';
+            }
+
+            // Privacy-Checkbox-Validierung
+            if (!privacyCheckbox.checked) {
+                privacyError.style.display = 'block';
+                isValid = false;
+            } else {
+                privacyError.style.display = 'none';
+            }
+
+            if (isValid) {
+                // Inputs deaktivieren während API-Call
+                nameInput.disabled = true;
+                emailInput.disabled = true;
+                messageInput.disabled = true;
+                privacyCheckbox.disabled = true;
+
+                // Submit-Button deaktivieren
+                const submitBtn = document.getElementById('contactSubmitBtn');
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Wird gesendet...';
+
+                // API-Call
+                (async () => {
+                    try {
+                        const response = await apiCall(API_CONFIG.endpoints.handover, {
+                            session_id: getOrCreateSessionId(),
+                            reason: 'Kontaktanfrage',
+                            customer_name: name,
+                            customer_email: email,
+                            customer_message: message
+                        });
+
+                        // Erfolg: Button-Text ändern
+                submitBtn.textContent = 'Gesendet ✓';
+
+                        // Nach kurzem Delay zurück zum Chat
+                setTimeout(() => {
+                    closeContactForm();
+
+                    // Formular zurücksetzen
+                    setTimeout(() => {
+                        nameInput.value = '';
+                        emailInput.value = '';
+                        messageInput.value = '';
+                        privacyCheckbox.checked = false;
+
+                        nameInput.disabled = false;
+                        emailInput.disabled = false;
+                        messageInput.disabled = false;
+                        privacyCheckbox.disabled = false;
+
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Nachricht senden';
+                    }, 500);
+
+                            // Typing-Indikator anzeigen
+                    setTimeout(() => {
+                        showTypingText();
+
+                        setTimeout(() => {
+                            hideTypingText();
+
+                                    // Bestätigungsnachricht anzeigen
+                                    if (response.message) {
+                                        addBotMessage(response.message);
+                                    } else {
+                                        // Fallback-Nachricht
+                                        addBotMessage(`Vielen Dank für Ihre Nachricht! Unser Team wird sich schnellstmöglich bei Ihnen unter <span style="color: #B7483E;">${email}</span> melden.`);
+                                    }
+
+                            // Final Feedback nach Kontakt-Nachricht anzeigen
+                                    setTimeout(() => {
+                            showFinalFeedback();
+                                    }, 1000);
+
+                            // "Kontaktformular öffnen" Button verstecken
+                            const contactHandoverBtn = document.querySelector('.contact-handover-btn');
+                            if (contactHandoverBtn) {
+                                contactHandoverBtn.classList.add('hide');
+                            }
+                        }, 1500);
+                    }, 500);
+                        }, 1000);
+
+                    } catch (error) {
+                        // Fehler: Inputs wieder aktivieren
+                        nameInput.disabled = false;
+                        emailInput.disabled = false;
+                        messageInput.disabled = false;
+                        privacyCheckbox.disabled = false;
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Nachricht senden';
+
+                        // Fehlermeldung anzeigen
+                        alert('Die Nachricht konnte nicht gesendet werden. Bitte versuchen Sie es erneut.');
+                        
+                        console.error('Fehler beim Senden der Kontakt-Nachricht:', error);
+                    }
+                })();
+            }
+        }
+
+        const textarea = document.getElementById('messageInput');
+        if (textarea) {
+            // Enter-Taste Handler
+            textarea.addEventListener('keydown', function(event) {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    // Nur senden wenn Bot nicht tippt (Cooldown)
+                    if (!isBotTyping) {
+                        console.log('Enter gedrückt, sende Nachricht...');
+                        sendMessage();
+                    } else {
+                        console.log('Enter blockiert: Bot schreibt noch...');
+                    }
+                }
+            });
+            
+            // Auto-resize
+            textarea.addEventListener('input', function() {
+                this.style.height = 'auto';
+                const newHeight = Math.min(this.scrollHeight, 120);
+                this.style.height = newHeight + 'px';
+            });
+        }
+    </script>
+</body>
+</html>
